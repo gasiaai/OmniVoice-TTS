@@ -114,7 +114,16 @@ def _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable):
 
     _model = OmniVoice.from_pretrained(model_id, **kwargs)
     print(f"[OmniVoice] ย้ายโมเดลไปที่ {device} ...")
-    _model.to(device)
+    try:
+        _model.to(device)
+    except RuntimeError as e:
+        if "no kernel image" in str(e):
+            raise RuntimeError(
+                "GPU ไม่รองรับ PyTorch เวอร์ชันนี้ (no kernel image)\n"
+                "วิธีแก้: ลบโฟลเดอร์ venv/ แล้วรัน install.bat ใหม่\n"
+                "install.bat จะติดตั้ง PyTorch cu128 ที่รองรับ GPU ใหม่ (RTX 5000+) ให้อัตโนมัติ"
+            ) from e
+        raise
     _loaded_model_id = model_id
     print(f"[OmniVoice] โหลดสำเร็จ — พร้อมใช้งาน")
 

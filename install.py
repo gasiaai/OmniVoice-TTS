@@ -62,10 +62,14 @@ if not torch_ok:
     except Exception:
         print("  ไม่พบ NVIDIA GPU — ติดตั้งแบบ CPU")
 
-    # CUDA driver backward compatible — ใช้ build สูงสุดที่ PyTorch รองรับ
-    if cuda_major >= 12:
+    # เลือก PyTorch build ตาม CUDA driver version
+    if cuda_major >= 13:
+        # Blackwell (RTX 5000 series) และ GPU ใหม่มาก — ต้องใช้ cu128+
+        index_url = "https://download.pytorch.org/whl/cu128"
+        label = "CUDA 12.8+ (Blackwell/RTX 5000 series)"
+    elif cuda_major >= 12:
         index_url = "https://download.pytorch.org/whl/cu124"
-        label = "CUDA 12.4 (รองรับ driver 12.x–13.x)"
+        label = "CUDA 12.4"
     elif cuda_major >= 11:
         index_url = "https://download.pytorch.org/whl/cu118"
         label = "CUDA 11.8"
