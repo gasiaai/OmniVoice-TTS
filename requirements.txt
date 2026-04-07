@@ -1,0 +1,14 @@
+# ติดตั้ง omnivoice ด้วย --no-deps ก่อน เพื่อไม่ให้ทับ torch ที่มีอยู่
+# pip install omnivoice --no-deps
+
+# จากนั้นติดตั้ง dependencies เพิ่มเติม
+gradio>=4.0
+soundfile
+scipy
+pydub
+sentencepiece
+jieba
+soxr
+transformers>=4.57
+# torch และ torchaudio ต้องติดตั้งแยกตาม GPU (CUDA version)
+# ดู: https://pytorch.org/get-started/locally/
