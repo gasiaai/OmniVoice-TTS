@@ -300,9 +300,24 @@ async def api_generate_convert(
 
 
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
+def _find_free_port(start: int = 7862, end: int = 7900) -> int:
+    import socket
+    for port in range(start, end + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError(f"ไม่พบ port ว่างในช่วง {start}–{end}")
+
+
 if __name__ == "__main__":
     import uvicorn
     import webbrowser
 
-    threading.Timer(1.5, lambda: webbrowser.open("http://localhost:7862")).start()
-    uvicorn.run(app, host="0.0.0.0", port=7862, log_level="info")
+    port = _find_free_port()
+    url  = f"http://localhost:{port}"
+    print(f"[OmniVoice] Starting on {url}")
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
