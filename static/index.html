@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniVoice TTS</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Topbar ────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <span class="topbar-title">OmniVoice TTS</span>
+    <span class="topbar-sep"></span>
+    <span id="gpu-badge">loading…</span>
+  </header>
+
+  <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Mode</div>
+      <button class="mode-btn active" data-panel="clone">◉ Voice Clone</button>
+      <button class="mode-btn" data-panel="design">○ Voice Design</button>
+      <button class="mode-btn" data-panel="longform">○ Longform</button>
+      <button class="mode-btn" data-panel="convert">○ Voice Convert</button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Model</div>
+      <div style="padding:0 10px;display:flex;flex-direction:column;gap:8px">
+        <div>
+          <label for="model-choice">Model</label>
+          <select id="model-choice">
+            <option value="OmniVoice-bf16 (~2 GB, แนะนำ)">bf16 ~2 GB ★</option>
+            <option value="OmniVoice (fp32, ~4 GB)">fp32 ~4 GB</option>
+          </select>
+        </div>
+        <div>
+          <label for="dtype-choice">Precision</label>
+          <select id="dtype-choice">
+            <option value="auto">auto</option>
+            <option value="bf16">bf16</option>
+            <option value="fp16">fp16</option>
+            <option value="fp32">fp32</option>
+          </select>
+        </div>
+        <div>
+          <label for="attn-choice">Attention</label>
+          <select id="attn-choice">
+            <option value="auto">auto</option>
+            <option value="eager">eager</option>
+            <option value="flash_attention_2">flash2</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn btn-sm btn-danger" id="unload-btn">⏏ Unload Model</button>
+    </div>
+  </nav>
+
+  <!-- ── Main ──────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- ══ Voice Clone ══════════════════════════════════════════════════ -->
+    <div class="panel active" id="panel-clone">
+
+      <div>
+        <label for="clone-text">ข้อความ</label>
+        <textarea id="clone-text" rows="5"
+          placeholder="พิมพ์ข้อความที่ต้องการสังเคราะห์เสียง&#10;&#10;เคล็ดลับ pause:&#10;  — ใส่ ... หรือ —— ระหว่างประโยค&#10;  — [laughter] [sigh] [sniff] สำหรับเสียงแสดงอารมณ์"></textarea>
+      </div>
+
+      <div>
+        <label for="clone-instruct">Dialect / Style (ไม่จำเป็น)</label>
+        <input type="text" id="clone-instruct"
+          placeholder='เช่น "พูดช้าๆ" / "สำเนียงใต้" / "whisper"'>
+      </div>
+
+      <!-- Ref audio tabs -->
+      <div>
+        <label>Reference Audio (3–15 วินาที)</label>
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="clone-upload">อัปโหลด</button>
+          <button class="tab-btn" data-tab="clone-mic">อัดเสียง</button>
+        </div>
+
+        <div class="tab-pane active" id="clone-upload">
+          <div class="drop-zone" id="clone-drop">
+            <input type="file" id="clone-ref-file" accept="audio/*">
+            <div>คลิกหรือลากไฟล์มาวาง (.wav / .mp3 / .flac)</div>
+            <div class="drop-zone-name" id="clone-ref-name"></div>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="clone-mic">
+          <div style="margin-bottom:8px">
+            <label for="clone-script-dd">สคริปต์สำหรับอ่าน (~5 วินาที)</label>
+            <select id="clone-script-dd"></select>
+          </div>
+          <div id="clone-script-box" class="transcript-box" style="margin-bottom:10px"></div>
+          <div class="mic-row">
+            <button class="btn btn-sm" id="clone-rec-btn">⏺ อัด</button>
+            <div class="rec-dot" id="clone-rec-dot"></div>
+            <span class="mic-timer" id="clone-rec-timer"></span>
+            <button class="btn btn-sm" id="clone-rec-stop" style="display:none">⏹ หยุด</button>
+          </div>
+          <audio class="mic-audio" id="clone-mic-audio" controls style="display:none"></audio>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="clone-ref-txt">Transcript ของ Reference (ไม่จำเป็น)</label>
+          <input type="text" id="clone-ref-txt" placeholder="ปล่อยว่างได้ — Whisper จะ transcribe อัตโนมัติ">
+        </div>
+        <button class="btn btn-sm" id="clone-asr-btn" style="align-self:flex-end">Auto Transcribe</button>
+      </div>
+
+      <details class="adv">
+        <summary>Advanced</summary>
+        <div class="adv-body">
+          <div class="slider-grid" id="clone-adv-sliders"></div>
+          <details class="adv">
+            <summary>Expert params</summary>
+            <div class="adv-body">
+              <div class="slider-grid" id="clone-expert-sliders"></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <button class="btn btn-primary" id="clone-gen-btn">▶ สร้างเสียง</button>
+
+      <div class="progress-wrap" id="clone-progress">
+        <progress id="clone-prog-bar" value="0" max="1"></progress>
+        <div class="progress-desc" id="clone-prog-desc"></div>
+      </div>
+
+      <div class="output-wrap" id="clone-output">
+        <audio id="clone-audio" controls></audio>
+        <div class="output-meta">
+          <span class="output-status" id="clone-status"></span>
+          <a class="btn btn-sm" id="clone-dl" download>⬇ Download</a>
+        </div>
+      </div>
+
+    </div><!-- /panel-clone -->
+
+
+    <!-- ══ Voice Design ══════════════════════════════════════════════════ -->
+    <div class="panel" id="panel-design">
+
+      <div>
+        <label for="design-text">ข้อความ</label>
+        <textarea id="design-text" rows="5" placeholder="พิมพ์ข้อความที่ต้องการสังเคราะห์เสียง"></textarea>
+      </div>
+
+      <div>
+        <label for="design-inst">Voice Description (English)</label>
+        <textarea id="design-inst" rows="2"
+          placeholder='"female, calm, low pitch, british accent"'></textarea>
+      </div>
+
+      <details class="adv">
+        <summary>Advanced</summary>
+        <div class="adv-body">
+          <div class="slider-grid" id="design-adv-sliders"></div>
+          <details class="adv">
+            <summary>Expert params</summary>
+            <div class="adv-body">
+              <div class="slider-grid" id="design-expert-sliders"></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <button class="btn btn-primary" id="design-gen-btn">▶ สร้างเสียง</button>
+
+      <div class="progress-wrap" id="design-progress">
+        <progress id="design-prog-bar" value="0" max="1"></progress>
+        <div class="progress-desc" id="design-prog-desc"></div>
+      </div>
+
+      <div class="output-wrap" id="design-output">
+        <audio id="design-audio" controls></audio>
+        <div class="output-meta">
+          <span class="output-status" id="design-status"></span>
+          <a class="btn btn-sm" id="design-dl" download>⬇ Download</a>
+        </div>
+      </div>
+
+    </div><!-- /panel-design -->
+
+
+    <!-- ══ Longform ══════════════════════════════════════════════════════ -->
+    <div class="panel" id="panel-longform">
+
+      <div>
+        <label for="lf-text">ข้อความยาว</label>
+        <textarea id="lf-text" rows="8" placeholder="วางข้อความยาวที่นี่ หรืออัปโหลด .txt"></textarea>
+      </div>
+
+      <div>
+        <label>อัปโหลด .txt (ไม่จำเป็น)</label>
+        <div class="drop-zone" id="lf-txt-drop">
+          <input type="file" id="lf-txt-file" accept=".txt">
+          <div>คลิกหรือลากไฟล์ .txt</div>
+          <div class="drop-zone-name" id="lf-txt-name"></div>
+        </div>
+      </div>
+
+      <details class="adv">
+        <summary>Reference Voice (ไม่จำเป็น)</summary>
+        <div class="adv-body">
+          <div class="tab-bar">
+            <button class="tab-btn active" data-tab="lf-upload">อัปโหลด</button>
+            <button class="tab-btn" data-tab="lf-mic">อัดเสียง</button>
+          </div>
+
+          <div class="tab-pane active" id="lf-upload">
+            <div class="drop-zone" id="lf-drop">
+              <input type="file" id="lf-ref-file" accept="audio/*">
+              <div>คลิกหรือลากไฟล์ .wav / .mp3 / .flac</div>
+              <div class="drop-zone-name" id="lf-ref-name"></div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="lf-mic">
+            <div style="margin-bottom:8px">
+              <label for="lf-script-dd">สคริปต์</label>
+              <select id="lf-script-dd"></select>
+            </div>
+            <div id="lf-script-box" class="transcript-box" style="margin-bottom:10px"></div>
+            <div class="mic-row">
+              <button class="btn btn-sm" id="lf-rec-btn">⏺ อัด</button>
+              <div class="rec-dot" id="lf-rec-dot"></div>
+              <span class="mic-timer" id="lf-rec-timer"></span>
+              <button class="btn btn-sm" id="lf-rec-stop" style="display:none">⏹ หยุด</button>
+            </div>
+            <audio class="mic-audio" id="lf-mic-audio" controls style="display:none"></audio>
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <div>
+              <label for="lf-ref-txt">Transcript</label>
+              <input type="text" id="lf-ref-txt" placeholder="ไม่จำเป็น">
+            </div>
+          </div>
+
+          <div>
+            <label for="lf-inst">Voice Design (ถ้าไม่มี ref audio)</label>
+            <textarea id="lf-inst" rows="2" placeholder='"female, calm"'></textarea>
+          </div>
+        </div>
+      </details>
+
+      <details class="adv">
+        <summary>Advanced</summary>
+        <div class="adv-body">
+          <div class="slider-grid" id="lf-adv-sliders"></div>
+          <div class="slider-grid" style="margin-top:8px">
+            <div class="slider-row">
+              <label>Chunk Size <span class="slider-val" id="lf-chunk-val">200</span></label>
+              <input type="range" id="lf-chunk" min="50" max="400" step="10" value="200"
+                oninput="document.getElementById('lf-chunk-val').textContent=this.value">
+            </div>
+            <div class="slider-row">
+              <label>Silence ms <span class="slider-val" id="lf-sil-val">500</span></label>
+              <input type="range" id="lf-sil" min="0" max="2000" step="100" value="500"
+                oninput="document.getElementById('lf-sil-val').textContent=this.value">
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:12px">
+            <input type="checkbox" id="lf-consistency" checked style="accent-color:var(--amber)">
+            Voice Consistency (ใช้ chunk แรกเป็น ref ถ้าไม่มี ref audio)
+          </label>
+          <details class="adv">
+            <summary>Expert params</summary>
+            <div class="adv-body">
+              <div class="slider-grid" id="lf-expert-sliders"></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <button class="btn btn-primary" id="lf-gen-btn">▶ สร้างเสียง</button>
+
+      <div class="progress-wrap" id="lf-progress">
+        <progress id="lf-prog-bar" value="0" max="1"></progress>
+        <div class="progress-desc" id="lf-prog-desc"></div>
+      </div>
+
+      <div class="output-wrap" id="lf-output">
+        <audio id="lf-audio" controls></audio>
+        <div class="output-meta">
+          <span class="output-status" id="lf-status"></span>
+          <a class="btn btn-sm" id="lf-dl" download>⬇ Download</a>
+        </div>
+      </div>
+
+    </div><!-- /panel-longform -->
+
+
+    <!-- ══ Voice Convert ═════════════════════════════════════════════════ -->
+    <div class="panel" id="panel-convert">
+
+      <div>
+        <label>เสียงต้นทาง</label>
+        <div class="drop-zone" id="vc2-drop">
+          <input type="file" id="vc2-src-file" accept="audio/*">
+          <div>อัปโหลดไฟล์เสียงที่ต้องการแปลง (.wav / .mp3 / .flac)</div>
+          <div class="drop-zone-name" id="vc2-src-name"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1">
+          <label for="vc2-src-text">ข้อความจากเสียงต้นทาง (แก้ไขได้)</label>
+          <textarea id="vc2-src-text" rows="3"
+            placeholder="กด 'Transcribe' หรือพิมพ์เองก็ได้"></textarea>
+        </div>
+      </div>
+      <div class="row" style="margin-top:-8px">
+        <button class="btn btn-sm" id="vc2-transcribe-btn">Transcribe (Whisper)</button>
+        <span id="vc2-transcribe-status" style="font-size:11px;color:var(--text-muted);align-self:center"></span>
+      </div>
+
+      <div>
+        <label>เสียง Reference (เสียงที่ต้องการเปลี่ยนเป็น)</label>
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="vc2-upload">อัปโหลด</button>
+          <button class="tab-btn" data-tab="vc2-mic">อัดเสียง</button>
+        </div>
+
+        <div class="tab-pane active" id="vc2-upload">
+          <div class="drop-zone" id="vc2-ref-drop">
+            <input type="file" id="vc2-ref-file" accept="audio/*">
+            <div>Reference Audio (.wav / .mp3 / .flac)</div>
+            <div class="drop-zone-name" id="vc2-ref-name"></div>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="vc2-mic">
+          <div style="margin-bottom:8px">
+            <label for="vc2-script-dd">สคริปต์</label>
+            <select id="vc2-script-dd"></select>
+          </div>
+          <div id="vc2-script-box" class="transcript-box" style="margin-bottom:10px"></div>
+          <div class="mic-row">
+            <button class="btn btn-sm" id="vc2-rec-btn">⏺ อัด</button>
+            <div class="rec-dot" id="vc2-rec-dot"></div>
+            <span class="mic-timer" id="vc2-rec-timer"></span>
+            <button class="btn btn-sm" id="vc2-rec-stop" style="display:none">⏹ หยุด</button>
+          </div>
+          <audio class="mic-audio" id="vc2-mic-audio" controls style="display:none"></audio>
+        </div>
+      </div>
+
+      <div>
+        <label for="vc2-ref-txt">Transcript ของ Reference (ไม่จำเป็น)</label>
+        <input type="text" id="vc2-ref-txt" placeholder="ไม่จำเป็น">
+      </div>
+
+      <details class="adv">
+        <summary>Advanced</summary>
+        <div class="adv-body">
+          <div class="slider-grid" id="vc2-adv-sliders"></div>
+          <details class="adv">
+            <summary>Expert params</summary>
+            <div class="adv-body">
+              <div class="slider-grid" id="vc2-expert-sliders"></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <button class="btn btn-primary" id="vc2-gen-btn">▶ แปลงเสียง</button>
+
+      <div class="progress-wrap" id="vc2-progress">
+        <progress id="vc2-prog-bar" value="0" max="1"></progress>
+        <div class="progress-desc" id="vc2-prog-desc"></div>
+      </div>
+
+      <div class="output-wrap" id="vc2-output">
+        <audio id="vc2-audio" controls></audio>
+        <div class="output-meta">
+          <span class="output-status" id="vc2-status"></span>
+          <a class="btn btn-sm" id="vc2-dl" download>⬇ Download</a>
+        </div>
+      </div>
+
+      <div id="vc2-text-out" style="display:none">
+        <label>ข้อความที่ใช้สร้างเสียง</label>
+        <div class="transcript-box" id="vc2-text-out-box"></div>
+      </div>
+
+    </div><!-- /panel-convert -->
+
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

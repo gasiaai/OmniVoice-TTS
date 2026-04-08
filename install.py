@@ -97,7 +97,9 @@ except ImportError as e:
 # ── 4. ติดตั้ง dependencies อื่น ─────────────────────────────────────────────
 section("4/5  ติดตั้ง dependencies")
 deps = [
-    "gradio",
+    "fastapi>=0.110",
+    "uvicorn[standard]",
+    "python-multipart",
     "accelerate",
     "soundfile",
     "scipy",

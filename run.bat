@@ -8,5 +8,5 @@ if not exist venv\Scripts\activate.bat (
 )
 
 call venv\Scripts\activate.bat
-python app.py
+python server.py
 if errorlevel 1 pause
