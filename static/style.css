@@ -263,6 +263,24 @@ select option { background: var(--bg-2); }
   cursor: pointer;
 }
 
+.drop-clear {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  line-height: 1.4;
+}
+
+.drop-clear:hover { color: var(--danger); border-color: var(--danger); }
+
 .drop-zone-name {
   color: var(--amber);
   font-weight: 500;

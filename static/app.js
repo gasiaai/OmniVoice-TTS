@@ -73,12 +73,31 @@ function setupDropZone(zoneId, inputId, nameId, onFile) {
   const input = document.getElementById(inputId);
   const name  = document.getElementById(nameId);
 
+  // Inject clear button (hidden until file selected)
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'drop-clear';
+  clearBtn.textContent = '✕';
+  clearBtn.title = 'ล้าง';
+  clearBtn.style.display = 'none';
+  zone.appendChild(clearBtn);
+
   function setFile(file) {
     zone.classList.add('has-file');
     name.textContent = file.name;
+    clearBtn.style.display = '';
     if (onFile) onFile(file);
   }
 
+  function clearFile() {
+    zone.classList.remove('has-file');
+    name.textContent = '';
+    clearBtn.style.display = 'none';
+    input.value = '';
+    if (onFile) onFile(null);
+  }
+
+  clearBtn.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); clearFile(); });
   input.addEventListener('change', () => { if (input.files[0]) setFile(input.files[0]); });
 
   zone.addEventListener('dragover', e => {
@@ -151,7 +170,6 @@ function setupMic(prefix) {
   let chunks   = [];
   let timerInt = null;
   let elapsed  = 0;
-  let micBlob  = null;
 
   const recBtn   = document.getElementById(`${prefix}-rec-btn`);
   const stopBtn  = document.getElementById(`${prefix}-rec-stop`);
@@ -161,11 +179,36 @@ function setupMic(prefix) {
 
   if (!recBtn) return;
 
+  // Inject clear button for mic recording
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'btn btn-sm';
+  clearBtn.textContent = '✕ ล้าง';
+  clearBtn.style.display = 'none';
+  audio.insertAdjacentElement('afterend', clearBtn);
+
+  function clearMic() {
+    audio.src = '';
+    audio.style.display = 'none';
+    clearBtn.style.display = 'none';
+    timer.textContent = '';
+    window[`${prefix}_mic_blob`] = null;
+    window[`${prefix}_mic_mime`] = null;
+  }
+
+  clearBtn.addEventListener('click', clearMic);
+
   function fmtTime(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
 
   recBtn.addEventListener('click', async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl:  false,
+        },
+      });
       mediaRec = new MediaRecorder(stream);
       chunks = [];
       mediaRec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -174,16 +217,19 @@ function setupMic(prefix) {
         dot.classList.remove('recording');
         recBtn.style.display = '';
         stopBtn.style.display = 'none';
-        const blob = new Blob(chunks, { type: mediaRec.mimeType || 'audio/webm' });
-        micBlob = blob;
-        const url = URL.createObjectURL(blob);
-        audio.src = url;
-        audio.style.display = '';
-        // expose blob for form submission
-        window[`${prefix}_mic_blob`] = blob;
-        window[`${prefix}_mic_mime`] = blob.type;
+        const mime = mediaRec.mimeType || 'audio/webm';
+        const blob = new Blob(chunks, { type: mime });
+        const url  = URL.createObjectURL(blob);
+        audio.src  = url;
+        audio.style.display  = '';
+        clearBtn.style.display = '';
+        // expose blob for form submission (filename includes ext for server-side detection)
+        const ext  = mime.includes('ogg') ? '.ogg' : '.webm';
+        window[`${prefix}_mic_blob`] = new File([blob], `recording${ext}`, { type: mime });
+        window[`${prefix}_mic_mime`] = mime;
       };
       mediaRec.start();
+      clearMic();
       elapsed = 0;
       timer.textContent = fmtTime(0);
       timerInt = setInterval(() => { elapsed++; timer.textContent = fmtTime(elapsed); }, 1000);
