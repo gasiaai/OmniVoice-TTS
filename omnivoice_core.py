@@ -249,6 +249,13 @@ def _call_model(text, ref_audio_file, ref_text, instruct,
     if ref_audio_path:
         ref_tensor = load_audio_tensor(ref_audio_path)
         if not ref_text:
+            # auto-load Whisper ถ้ายังไม่ได้โหลด เพื่อให้ได้ ref_text
+            # (ref_text สำคัญมากต่อคุณภาพการโคลนเสียง)
+            if _whisper_pipe is None:
+                try:
+                    _ensure_whisper()
+                except Exception:
+                    pass  # ไม่มี Whisper → ใช้ zero-shot แทน
             ref_text = auto_transcribe(ref_audio_path)
 
     if seed > 0:
