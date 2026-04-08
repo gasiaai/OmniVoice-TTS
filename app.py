@@ -234,7 +234,10 @@ def split_text(text: str, max_chars: int = 200) -> list[str]:
 
 
 # ─── CORE GENERATE ─────────────────────────────────────────────────────────────
-def _call_model(text, ref_audio_file, ref_text, instruct, steps, guidance, speed, t_shift):
+def _call_model(text, ref_audio_file, ref_text, instruct,
+                steps, guidance, speed, t_shift,
+                seed=0, duration=0.0,
+                pos_temp=5.0, cls_temp=0.0, layer_penalty=5.0):
     """ref_audio_file: path string หรือ gr.File object (มี .name) หรือ None"""
     ref_tensor = None
     ref_audio_path = None
@@ -245,6 +248,11 @@ def _call_model(text, ref_audio_file, ref_text, instruct, steps, guidance, speed
         if not ref_text:
             ref_text = auto_transcribe(ref_audio_path)
 
+    if seed > 0:
+        torch.manual_seed(int(seed))
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(int(seed))
+
     audio_list = _model.generate(
         text=text,
         num_step=int(steps),
@@ -253,9 +261,10 @@ def _call_model(text, ref_audio_file, ref_text, instruct, steps, guidance, speed
         speed=float(speed),
         ref_audio=(ref_tensor, SAMPLE_RATE) if ref_tensor is not None else None,
         ref_text=ref_text if ref_text else None,
-        position_temperature=5.0,
-        class_temperature=0.0,
-        layer_penalty_factor=5.0,
+        position_temperature=float(pos_temp),
+        class_temperature=float(cls_temp),
+        layer_penalty_factor=float(layer_penalty),
+        fix_duration=float(duration) if duration > 0 else None,
         denoise=True,
         preprocess_prompt=True,
         postprocess_output=True,
@@ -268,8 +277,9 @@ def _call_model(text, ref_audio_file, ref_text, instruct, steps, guidance, speed
 
 
 # ─── TAB FUNCTIONS ─────────────────────────────────────────────────────────────
-def generate_clone(text, ref_audio, ref_mic, ref_text,
+def generate_clone(text, ref_audio, ref_mic, ref_text, instruct,
                    steps, guidance, speed, t_shift,
+                   seed, duration, pos_temp, cls_temp, layer_penalty,
                    model_choice, dtype_choice, attn_choice, whisper_enable,
                    progress=gr.Progress()):
     ref_audio = resolve_ref(ref_audio, ref_mic)
@@ -283,7 +293,9 @@ def generate_clone(text, ref_audio, ref_mic, ref_text,
         _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable)
         progress(0.2, desc="กำลังสร้างเสียง…")
         arr = _call_model(text.strip(), ref_audio, ref_text.strip(),
-                          None, steps, guidance, speed, t_shift)
+                          instruct.strip() if instruct else None,
+                          steps, guidance, speed, t_shift,
+                          seed, duration, pos_temp, cls_temp, layer_penalty)
         save_audio(arr, "clone")
         return to_gradio_audio(arr), f"สำเร็จ ({time.time()-t0:.1f}s)", get_gpu_info()
     except Exception as e:
@@ -292,6 +304,7 @@ def generate_clone(text, ref_audio, ref_mic, ref_text,
 
 def generate_design(text, instruct,
                     steps, guidance, speed, t_shift,
+                    seed, duration, pos_temp, cls_temp, layer_penalty,
                     model_choice, dtype_choice, attn_choice, whisper_enable,
                     progress=gr.Progress()):
     if not text.strip():
@@ -304,7 +317,8 @@ def generate_design(text, instruct,
         _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable)
         progress(0.2, desc="กำลังสร้างเสียง…")
         arr = _call_model(text.strip(), None, None,
-                          instruct.strip(), steps, guidance, speed, t_shift)
+                          instruct.strip(), steps, guidance, speed, t_shift,
+                          seed, duration, pos_temp, cls_temp, layer_penalty)
         save_audio(arr, "design")
         return to_gradio_audio(arr), f"สำเร็จ ({time.time()-t0:.1f}s)", get_gpu_info()
     except Exception as e:
@@ -320,6 +334,7 @@ def load_txt(file_obj):
 
 def generate_longform(text, ref_audio, ref_mic, ref_text, instruct,
                       steps, guidance, speed, t_shift,
+                      seed, duration, pos_temp, cls_temp, layer_penalty,
                       chunk_size, silence_ms, use_consistency,
                       model_choice, dtype_choice, attn_choice, whisper_enable,
                       progress=gr.Progress()):
@@ -348,7 +363,8 @@ def generate_longform(text, ref_audio, ref_mic, ref_text, instruct,
             progress((i + 0.5) / total, desc=f"Chunk {i+1}/{total}…")
             arr = _call_model(chunk, cur_ref_audio, cur_ref_text,
                               instruct.strip() if instruct else None,
-                              steps, guidance, speed, t_shift)
+                              steps, guidance, speed, t_shift,
+                              seed, duration, pos_temp, cls_temp, layer_penalty)
             all_audio.append(arr)
 
             if use_consistency and i == 0 and cur_ref_audio is None:
@@ -411,6 +427,7 @@ def transcribe_source(src_file, progress=gr.Progress()):
 def generate_voice_convert(src_file, src_text,
                            ref_file, ref_mic, ref_text,
                            steps, guidance, speed, t_shift,
+                           seed, duration, pos_temp, cls_temp, layer_penalty,
                            model_choice, dtype_choice, attn_choice,
                            progress=gr.Progress()):
     src_path = src_file.name if hasattr(src_file, "name") else src_file if src_file else None
@@ -438,7 +455,8 @@ def generate_voice_convert(src_file, src_text,
 
         progress(0.4, desc="กำลังสร้างเสียง…")
         arr = _call_model(text, ref, ref_text.strip() if ref_text else "",
-                          None, steps, guidance, speed, t_shift)
+                          None, steps, guidance, speed, t_shift,
+                          seed, duration, pos_temp, cls_temp, layer_penalty)
         save_audio(arr, "vconv")
         return to_gradio_audio(arr), text, f"สำเร็จ ({time.time()-t0:.1f}s)", get_gpu_info()
     except Exception as e:
@@ -476,13 +494,24 @@ def build_ui():
 
         gr.Markdown("---")
 
-        def adv_params(default_steps=16):
-            steps    = gr.Slider(4, 64,  value=default_steps, step=1,
-                                 label="Diffusion Steps (น้อย=เร็ว, มาก=คุณภาพดี)")
-            guidance = gr.Slider(0.0, 10.0, value=3.0, step=0.5, label="Guidance Scale")
-            speed    = gr.Slider(0.5, 2.0,  value=1.0, step=0.05, label="ความเร็วเสียง")
-            t_shift  = gr.Slider(0.0, 1.0,  value=0.3, step=0.05, label="t-shift")
-            return steps, guidance, speed, t_shift
+        def adv_params():
+            with gr.Row():
+                steps    = gr.Slider(4, 64,   value=32,  step=1,    label="Steps (น้อย=เร็ว, มาก=คุณภาพดี)")
+                guidance = gr.Slider(0.0,10.0, value=2.0, step=0.5,  label="Guidance Scale")
+            with gr.Row():
+                speed    = gr.Slider(0.5, 2.0, value=1.0, step=0.05, label="ความเร็วเสียง")
+                t_shift  = gr.Slider(0.0, 1.0, value=0.1, step=0.05, label="t-shift")
+            with gr.Row():
+                seed     = gr.Slider(0, 2**31-1, value=0, step=1,
+                                     label="Seed (0=สุ่ม)")
+                duration = gr.Slider(0.0, 60.0, value=0.0, step=0.5,
+                                     label="Duration วินาที (0=อัตโนมัติ)")
+            with gr.Accordion("Expert params", open=False):
+                with gr.Row():
+                    pos_temp     = gr.Slider(0.0, 20.0, value=5.0, step=0.5, label="Position Temperature")
+                    cls_temp     = gr.Slider(0.0,  5.0, value=0.0, step=0.1, label="Class Temperature")
+                    layer_penalty = gr.Slider(0.0, 20.0, value=5.0, step=0.5, label="Layer Penalty Factor")
+            return steps, guidance, speed, t_shift, seed, duration, pos_temp, cls_temp, layer_penalty
 
         with gr.Tabs():
 
@@ -491,7 +520,21 @@ def build_ui():
                 gr.Markdown("โคลนเสียงจาก reference audio (3–15 วินาที)")
                 with gr.Row():
                     with gr.Column(scale=2):
-                        vc_text = gr.Textbox(label="ข้อความ", lines=6)
+                        vc_text = gr.Textbox(
+                            label="ข้อความ",
+                            lines=6,
+                            placeholder=(
+                                "พิมพ์ข้อความที่ต้องการสังเคราะห์เสียง\n\n"
+                                "เคล็ดลับ pause:\n"
+                                "  — ใส่ ... หรือ —— ระหว่างประโยคเพื่อเว้นวรรค\n"
+                                "  — [laughter] [sigh] [sniff] สำหรับเสียงแสดงอารมณ์"
+                            ),
+                        )
+                        vc_instruct = gr.Textbox(
+                            label="Dialect / Style (ไม่จำเป็น)",
+                            lines=1,
+                            placeholder='เช่น "พูดช้าๆ" / "สำเนียงใต้" / "Sichuan dialect" / "whisper"',
+                        )
 
                         with gr.Tabs():
                             # อัปโหลดไฟล์ (default)
@@ -531,7 +574,7 @@ def build_ui():
                         )
 
                         with gr.Accordion("Advanced", open=False):
-                            vc_steps, vc_guid, vc_spd, vc_ts = adv_params()
+                            vc_steps, vc_guid, vc_spd, vc_ts, vc_seed, vc_dur, vc_pt, vc_ct, vc_lp = adv_params()
                         vc_btn = gr.Button("สร้างเสียง", variant="primary")
 
                     with gr.Column(scale=1):
@@ -540,8 +583,9 @@ def build_ui():
 
                 vc_btn.click(
                     generate_clone,
-                    inputs=[vc_text, vc_ref, vc_mic, vc_ref_txt,
+                    inputs=[vc_text, vc_ref, vc_mic, vc_ref_txt, vc_instruct,
                             vc_steps, vc_guid, vc_spd, vc_ts,
+                            vc_seed, vc_dur, vc_pt, vc_ct, vc_lp,
                             *_model_inputs],
                     outputs=[vc_out, vc_status, gpu_box],
                 )
@@ -556,7 +600,7 @@ def build_ui():
                                              lines=2,
                                              placeholder='"female, calm, low pitch, british accent"')
                         with gr.Accordion("Advanced", open=False):
-                            vd_steps, vd_guid, vd_spd, vd_ts = adv_params()
+                            vd_steps, vd_guid, vd_spd, vd_ts, vd_seed, vd_dur, vd_pt, vd_ct, vd_lp = adv_params()
                         vd_btn = gr.Button("สร้างเสียง", variant="primary")
                     with gr.Column(scale=1):
                         vd_out    = gr.Audio(label="ผลลัพธ์")
@@ -566,6 +610,7 @@ def build_ui():
                     generate_design,
                     inputs=[vd_text, vd_inst,
                             vd_steps, vd_guid, vd_spd, vd_ts,
+                            vd_seed, vd_dur, vd_pt, vd_ct, vd_lp,
                             *_model_inputs],
                     outputs=[vd_out, vd_status, gpu_box],
                 )
@@ -613,7 +658,7 @@ def build_ui():
                             lf_inst = gr.Textbox(label="Voice Description", lines=2)
 
                         with gr.Accordion("Advanced", open=False):
-                            lf_steps, lf_guid, lf_spd, lf_ts = adv_params()
+                            lf_steps, lf_guid, lf_spd, lf_ts, lf_seed, lf_dur, lf_pt, lf_ct, lf_lp = adv_params()
                             with gr.Row():
                                 lf_chunk  = gr.Slider(50, 400, value=200, step=10,
                                                       label="ความยาว chunk (ตัวอักษร)")
@@ -632,6 +677,7 @@ def build_ui():
                     generate_longform,
                     inputs=[lf_text, lf_ref, lf_mic, lf_ref_txt, lf_inst,
                             lf_steps, lf_guid, lf_spd, lf_ts,
+                            lf_seed, lf_dur, lf_pt, lf_ct, lf_lp,
                             lf_chunk, lf_sil, lf_consist,
                             *_model_inputs],
                     outputs=[lf_out, lf_status, gpu_box],
@@ -689,7 +735,7 @@ def build_ui():
                                                   lines=2)
 
                         with gr.Accordion("Advanced", open=False):
-                            vc2_steps, vc2_guid, vc2_spd, vc2_ts = adv_params()
+                            vc2_steps, vc2_guid, vc2_spd, vc2_ts, vc2_seed, vc2_dur, vc2_pt, vc2_ct, vc2_lp = adv_params()
 
                         vc2_btn = gr.Button("แปลงเสียง", variant="primary")
 
@@ -706,6 +752,7 @@ def build_ui():
                     inputs=[vc2_src, vc2_src_text,
                             vc2_ref, vc2_mic, vc2_ref_text,
                             vc2_steps, vc2_guid, vc2_spd, vc2_ts,
+                            vc2_seed, vc2_dur, vc2_pt, vc2_ct, vc2_lp,
                             *_model_inputs_no_whisper],
                     outputs=[vc2_out, vc2_text_out, vc2_status, gpu_box],
                 )
