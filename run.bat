@@ -2,13 +2,22 @@
 chcp 65001 >nul
 setlocal
 
-set "PY=%~dp0python_embeded\python.exe"
+set "ROOT=%~dp0"
 
-if not exist "%PY%" (
-    echo  Please run install.bat first.
-    pause
-    exit /b 1
+REM ── หา Python: python_embeded (ใหม่) → venv (เก่า) ───────────────────────
+if exist "%ROOT%python_embeded\python.exe" (
+    set "PY=%ROOT%python_embeded\python.exe"
+    goto :run
+)
+if exist "%ROOT%venv\Scripts\python.exe" (
+    set "PY=%ROOT%venv\Scripts\python.exe"
+    goto :run
 )
 
-"%PY%" "%~dp0server.py"
+echo  ไม่พบ Python -- กรุณารัน install.bat ก่อน
+pause
+exit /b 1
+
+:run
+"%PY%" "%ROOT%server.py"
 if errorlevel 1 pause
