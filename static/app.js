@@ -491,6 +491,21 @@ document.getElementById('vc2-transcribe-btn').addEventListener('click', async ()
   }
 });
 
+// ── Dark mode toggle ────────────────────────────────────────────────────────
+(function () {
+  const btn = document.getElementById('theme-toggle');
+  function apply(dark) {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    btn.textContent = dark ? '☀️' : '🌙';
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }
+  // init from saved pref
+  apply(localStorage.getItem('theme') === 'dark');
+  btn.addEventListener('click', () =>
+    apply(document.documentElement.getAttribute('data-theme') !== 'dark')
+  );
+})();
+
 document.getElementById('vc2-gen-btn').addEventListener('click', async () => {
   const srcFile = document.getElementById('vc2-src-file').files[0];
   const ref     = getRefAudio('vc2');

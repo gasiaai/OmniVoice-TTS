@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/static/style.css">
+  <!-- apply saved theme before first paint to avoid flash -->
+  <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark')</script>
 </head>
 <body>
 <div class="shell">
@@ -16,6 +18,7 @@
     <span class="topbar-title">🎙️ OmniVoice TTS <span>600+ languages</span></span>
     <span class="topbar-sep"></span>
     <span id="gpu-badge">loading…</span>
+    <button id="theme-toggle" title="Toggle dark mode">🌙</button>
   </header>
 
   <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
@@ -78,7 +81,7 @@
         <div>
           <label for="clone-instruct">Dialect / Style <span style="font-weight:400;opacity:.7">(ไม่จำเป็น)</span></label>
           <input type="text" id="clone-instruct"
-            placeholder='เช่น "พูดช้าๆ" / "สำเนียงใต้" / "whisper"'>
+            placeholder='เช่น "พูดช้าๆ" / "Sichuan dialect" / "whisper"'>
         </div>
       </div>
 

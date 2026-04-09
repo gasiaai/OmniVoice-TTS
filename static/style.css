@@ -2,28 +2,52 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg:         #f5f3ff;
-  --surface:    #ffffff;
-  --surface-2:  #f0edff;
-  --primary:    oklch(65% 0.18 295);
-  --primary-lt: oklch(90% 0.07 295);
-  --primary-fg: #ffffff;
-  --pink:       oklch(75% 0.14 355);
-  --mint:       oklch(73% 0.11 168);
-  --peach:      oklch(78% 0.12 52);
-  --yellow:     oklch(84% 0.14 96);
-  --text:       oklch(26% 0.04 295);
-  --text-muted: oklch(56% 0.03 295);
-  --border:     oklch(87% 0.04 295);
-  --danger:     oklch(62% 0.18 20);
-  --sh-sm:      0 1px 4px oklch(26% 0.08 295 / 0.07);
-  --sh:         0 4px 18px oklch(26% 0.08 295 / 0.10);
-  --sh-lg:      0 8px 32px oklch(26% 0.08 295 / 0.13);
-  --r-sm:       8px;
-  --r:          14px;
-  --r-lg:       20px;
-  --r-pill:     999px;
-  --sans:       'Nunito', 'Noto Sans Thai', sans-serif;
+  --bg:              #f5f3ff;
+  --surface:         #ffffff;
+  --surface-2:       #f0edff;
+  --primary:         oklch(65% 0.18 295);
+  --primary-lt:      oklch(90% 0.07 295);
+  --primary-fg:      #ffffff;
+  --pink:            oklch(75% 0.14 355);
+  --mint:            oklch(73% 0.11 168);
+  --peach:           oklch(78% 0.12 52);
+  --yellow:          oklch(84% 0.14 96);
+  --text:            oklch(26% 0.04 295);
+  --text-muted:      oklch(56% 0.03 295);
+  --border:          oklch(87% 0.04 295);
+  --danger:          oklch(62% 0.18 20);
+  --sh-sm:           0 1px 4px oklch(26% 0.08 295 / 0.07);
+  --sh:              0 4px 18px oklch(26% 0.08 295 / 0.10);
+  --sh-lg:           0 8px 32px oklch(26% 0.08 295 / 0.13);
+  --r-sm:            8px;
+  --r:               14px;
+  --r-lg:            20px;
+  --r-pill:          999px;
+  --sans:            'Nunito', 'Noto Sans Thai', sans-serif;
+  /* component-specific tokens */
+  --output-grad-2:   oklch(93% 0.05 355);
+  --output-border:   oklch(82% 0.08 295);
+  --drop-ok-border:  oklch(78% 0.09 168);
+  --drop-ok-bg:      oklch(94% 0.04 168);
+}
+
+[data-theme="dark"] {
+  --bg:              oklch(14% 0.025 295);
+  --surface:         oklch(18% 0.025 295);
+  --surface-2:       oklch(22% 0.025 295);
+  --primary:         oklch(72% 0.18 295);
+  --primary-lt:      oklch(24% 0.09 295);
+  --pink:            oklch(72% 0.14 355);
+  --text:            oklch(91% 0.015 295);
+  --text-muted:      oklch(58% 0.025 295);
+  --border:          oklch(28% 0.035 295);
+  --sh-sm:           0 1px 6px oklch(5% 0.02 295 / 0.4);
+  --sh:              0 4px 20px oklch(5% 0.02 295 / 0.5);
+  --sh-lg:           0 8px 36px oklch(5% 0.02 295 / 0.6);
+  --output-grad-2:   oklch(22% 0.05 355);
+  --output-border:   oklch(35% 0.08 295);
+  --drop-ok-border:  oklch(42% 0.09 168);
+  --drop-ok-bg:      oklch(22% 0.05 168);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,7 +60,22 @@ html, body {
   font-size: 14px;
   line-height: 1.55;
   overflow: hidden;
+  transition: background 200ms, color 200ms;
 }
+
+/* ── Theme toggle button ─────────────────────────────────────────────────── */
+#theme-toggle {
+  background: rgba(255,255,255,0.18);
+  border: 1.5px solid rgba(255,255,255,0.35);
+  color: #fff;
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 150ms;
+}
+#theme-toggle:hover { background: rgba(255,255,255,0.30); }
 
 /* ── Layout ──────────────────────────────────────────────────────────────── */
 .shell {
@@ -309,8 +348,8 @@ select option { background: var(--surface); }
 
 .drop-zone.has-file {
   border-style: solid;
-  border-color: oklch(78% 0.09 168);
-  background: oklch(94% 0.04 168);
+  border-color: var(--drop-ok-border);
+  background: var(--drop-ok-bg);
 }
 
 .drop-zone.drop-accept { transform: scale(1.02); }
@@ -459,8 +498,8 @@ progress::-moz-progress-bar {
 
 /* ── Output area ─────────────────────────────────────────────────────────── */
 .output-wrap {
-  background: linear-gradient(135deg, var(--primary-lt) 0%, oklch(93% 0.05 355) 100%);
-  border: 1.5px solid oklch(82% 0.08 295);
+  background: linear-gradient(135deg, var(--primary-lt) 0%, var(--output-grad-2) 100%);
+  border: 1.5px solid var(--output-border);
   border-radius: var(--r);
   padding: 16px;
   max-height: 0;
