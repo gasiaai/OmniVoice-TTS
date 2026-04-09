@@ -15,15 +15,6 @@ _app_dir = os.path.dirname(os.path.abspath(__file__))
 if _app_dir not in sys.path:
     sys.path.insert(0, _app_dir)
 
-# Point pydub at ffmpeg from imageio-ffmpeg (no system ffmpeg needed)
-try:
-    import imageio_ffmpeg
-    _ff = imageio_ffmpeg.get_ffmpeg_exe()
-    os.environ.setdefault("FFMPEG_BINARY", _ff)
-    os.environ.setdefault("PATH", os.environ.get("PATH", "") + os.pathsep + os.path.dirname(_ff))
-except Exception:
-    pass
-
 # Fix Windows console encoding
 os.environ["PYTHONIOENCODING"] = "utf-8"
 if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
@@ -68,11 +59,14 @@ async def _save_upload(upload: UploadFile | None) -> str | None:
     except Exception:
         os.close(fd)
         raise
-    # transcode WebM/Ogg → WAV (Windows Chrome MediaRecorder)
+    # Fallback transcode WebM/Ogg → WAV (browser normally sends WAV already)
     if suffix.lower() in (".webm", ".ogg"):
         wav_path = path[: -len(suffix)] + ".wav"
         try:
-            from pydub import AudioSegment
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                from pydub import AudioSegment
             seg = AudioSegment.from_file(path)
             seg.export(wav_path, format="wav")
             os.remove(path)

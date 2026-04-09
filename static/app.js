@@ -165,6 +165,48 @@ async function loadScripts() {
 loadScripts();
 
 // ── Mic recorder ────────────────────────────────────────────────────────────
+// Convert any audio blob to WAV using Web Audio API (avoids needing ffmpeg server-side)
+async function blobToWav(blob) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+  const nCh = buf.numberOfChannels;
+  const rate = buf.sampleRate;
+  const len  = buf.length;
+  // Interleave channels
+  const pcm = new Float32Array(len * nCh);
+  for (let ch = 0; ch < nCh; ch++) {
+    const chData = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) pcm[i * nCh + ch] = chData[i];
+  }
+  // Build WAV
+  const bytesPerSample = 2;
+  const dataLen = pcm.length * bytesPerSample;
+  const header = new ArrayBuffer(44);
+  const v = new DataView(header);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  v.setUint32(4, 36 + dataLen, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, nCh, true);
+  v.setUint32(24, rate, true);
+  v.setUint32(28, rate * nCh * bytesPerSample, true);
+  v.setUint16(32, nCh * bytesPerSample, true);
+  v.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  v.setUint32(40, dataLen, true);
+  // Convert float → int16
+  const samples = new Int16Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    const s = Math.max(-1, Math.min(1, pcm[i]));
+    samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  ctx.close();
+  return new Blob([header, samples.buffer], { type: 'audio/wav' });
+}
+
 function setupMic(prefix) {
   let mediaRec = null;
   let chunks   = [];
@@ -212,21 +254,25 @@ function setupMic(prefix) {
       mediaRec = new MediaRecorder(stream);
       chunks = [];
       mediaRec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      mediaRec.onstop = () => {
+      mediaRec.onstop = async () => {
         clearInterval(timerInt);
         dot.classList.remove('recording');
         recBtn.style.display = '';
         stopBtn.style.display = 'none';
-        const mime = mediaRec.mimeType || 'audio/webm';
-        const blob = new Blob(chunks, { type: mime });
-        const url  = URL.createObjectURL(blob);
-        audio.src  = url;
-        audio.style.display  = '';
+        const rawBlob = new Blob(chunks, { type: mediaRec.mimeType || 'audio/webm' });
+        // Convert to WAV in browser (no ffmpeg needed server-side)
+        try {
+          const wavBlob = await blobToWav(rawBlob);
+          audio.src = URL.createObjectURL(wavBlob);
+          window[`${prefix}_mic_blob`] = new File([wavBlob], 'recording.wav', { type: 'audio/wav' });
+        } catch {
+          // Fallback: send raw blob if conversion fails
+          audio.src = URL.createObjectURL(rawBlob);
+          const ext = (mediaRec.mimeType || '').includes('ogg') ? '.ogg' : '.webm';
+          window[`${prefix}_mic_blob`] = new File([rawBlob], `recording${ext}`, { type: rawBlob.type });
+        }
+        audio.style.display = '';
         clearBtn.style.display = '';
-        // expose blob for form submission (filename includes ext for server-side detection)
-        const ext  = mime.includes('ogg') ? '.ogg' : '.webm';
-        window[`${prefix}_mic_blob`] = new File([blob], `recording${ext}`, { type: mime });
-        window[`${prefix}_mic_mime`] = mime;
       };
       mediaRec.start();
       clearMic();
