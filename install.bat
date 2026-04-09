@@ -13,6 +13,22 @@ echo  OmniVoice TTS - Installer
 echo  ==========================
 echo.
 
+REM --- Check path length (Windows 260 char limit) ---
+set "CHECK_PATH=%ROOT%python_embeded\Lib\site-packages\placeholder_package_name_padding\"
+call :strlen CHECK_PATH pathlen
+if %pathlen% GTR 180 (
+    echo [ERROR] Folder path is too long!
+    echo         Current: %ROOT%
+    echo.
+    echo   Windows has a 260-character path limit.
+    echo   Please move this folder to a shorter path, for example:
+    echo     C:\OmniVoice-TTS\
+    echo.
+    echo   Then run install.bat again.
+    pause
+    exit /b 1
+)
+
 REM --- Step 1: Python embeddable ---
 if exist "%PY%" (
     echo [1/4] Python embeddable found, skipping download.
@@ -69,3 +85,18 @@ echo.
 echo [4/4] Done! Run run.bat to start OmniVoice TTS.
 echo.
 pause
+goto :eof
+
+REM --- Utility: string length ---
+:strlen
+setlocal enabledelayedexpansion
+set "s=!%~1!"
+set len=0
+for %%i in (4096 2048 1024 512 256 128 64 32 16 8 4 2 1) do (
+    if "!s:~%%i,1!" neq "" (
+        set /a "len+=%%i"
+        set "s=!s:~%%i!"
+    )
+)
+endlocal & set "%~2=%len%"
+goto :eof

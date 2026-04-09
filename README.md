@@ -22,9 +22,13 @@ Zero-shot multilingual text-to-speech (600+ languages) — standalone desktop ap
 ### Option A: Download ready-to-run (.rar)
 
 1. Download **[OmniVoice-TTS.rar](https://github.com/gasiaai/OmniVoice-TTS/releases/latest)** from Releases
-2. Extract anywhere
+2. Extract to a **short path** like `C:\OmniVoice-TTS\`
 3. Double-click **`install.bat`** — installs Python + PyTorch + dependencies automatically
 4. Double-click **`run.bat`** — browser opens, ready to use
+
+> **Important:** Do NOT run from inside a zip or from a deep folder path like Desktop or Downloads.
+> Windows has a 260-character path limit — deep paths will cause install errors.
+> Extract to something short like `C:\OmniVoice-TTS\` or `D:\OmniVoice-TTS\`.
 
 > No Python installation needed. Everything runs from a bundled `python_embeded/` folder.
 
