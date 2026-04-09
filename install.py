@@ -1,6 +1,6 @@
 """
 OmniVoice TTS — Auto Installer
-รันผ่าน install.bat เท่านั้น (ต้องอยู่ใน venv แล้ว)
+รันผ่าน install.bat เท่านั้น  (ใช้ python_embeded\python.exe)
 """
 import sys
 import os
@@ -121,7 +121,7 @@ print("""
 
   วิธีใช้:
     - ดับเบิลคลิก run.bat เพื่อเปิดแอป
-    - เบราว์เซอร์จะเปิดที่ http://localhost:7861
+    - เบราว์เซอร์จะเปิดอัตโนมัติ (port 7862 หรือ port ว่างถัดไป)
     - กด "สร้างเสียง" ครั้งแรก โมเดลจะโหลดอัตโนมัติ (~2-4 GB)
 
   หมายเหตุ:

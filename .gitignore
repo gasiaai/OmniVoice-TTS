@@ -1,5 +1,7 @@
+python_embeded/
 venv/
 output/
+tmp/
 __pycache__/
 *.pyc
 *.wav
@@ -7,3 +9,5 @@ __pycache__/
 *.flac
 _tmp_ref.*
 .env
+py_embed.zip
+get-pip.py

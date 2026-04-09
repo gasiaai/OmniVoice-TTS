@@ -1,12 +1,14 @@
 @echo off
 chcp 65001 >nul
+setlocal
 
-if not exist venv\Scripts\activate.bat (
-    echo Please run install.bat first.
+set "PY=%~dp0python_embeded\python.exe"
+
+if not exist "%PY%" (
+    echo  Please run install.bat first.
     pause
     exit /b 1
 )
 
-call venv\Scripts\activate.bat
-python server.py
+"%PY%" "%~dp0server.py"
 if errorlevel 1 pause
