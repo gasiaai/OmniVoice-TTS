@@ -16,7 +16,7 @@ echo.
 REM --- Step 1: Python embeddable ---
 if exist "%PY%" (
     echo [1/4] Python embeddable found, skipping download.
-    goto :pip
+    goto :bootstrap
 )
 
 echo [1/4] Downloading Python %PY_VER% embeddable...
@@ -25,7 +25,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\ov_dl.ps1"
 del "%TEMP%\ov_dl.ps1" 2>nul
 
 if not exist "%ROOT%py_embed.zip" (
-    echo [ERROR] Download failed. Check your internet connection and try again.
+    echo [ERROR] Download failed. Check your internet connection.
     pause
     exit /b 1
 )
@@ -41,36 +41,19 @@ if not exist "%PY%" (
     pause
     exit /b 1
 )
-
-REM Enable site-packages: uncomment "import site" in ._pth file
-for %%F in ("%PYDIR%\*.pth") do (
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Content '%%F') -replace '#import site','import site' | Set-Content '%%F'"
-)
 echo [1/4] Python OK.
 
-:pip
-REM --- Step 2: pip ---
-if exist "%PYDIR%\Scripts\pip.exe" (
-    echo [2/4] pip found, skipping.
-    goto :packages
-)
-
-echo [2/4] Installing pip...
-echo Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%ROOT%get-pip.py' -UseBasicParsing > "%TEMP%\ov_pip.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\ov_pip.ps1"
-del "%TEMP%\ov_pip.ps1" 2>nul
-
-if not exist "%ROOT%get-pip.py" (
-    echo [ERROR] Could not download pip.
+:bootstrap
+REM --- Step 2: Enable site-packages + install pip (via bootstrap.py) ---
+echo [2/4] Setting up pip...
+"%PY%" "%ROOT%bootstrap.py"
+if errorlevel 1 (
+    echo [ERROR] pip setup failed. See error above.
     pause
     exit /b 1
 )
-"%PY%" "%ROOT%get-pip.py" --no-warn-script-location -q
-del "%ROOT%get-pip.py" 2>nul
-echo [2/4] pip OK.
 
-:packages
-REM --- Step 3: packages ---
+REM --- Step 3: Install packages ---
 echo [3/4] Installing packages (PyTorch + OmniVoice + deps)...
 echo       First run may download 3-6 GB. Please wait...
 echo.

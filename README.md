@@ -1,43 +1,106 @@
-# OmniVoice TTS Standalone App
+# OmniVoice TTS
 
-A standalone Gradio web app for [OmniVoice](https://github.com/k2-fsa/omnivoice) TTS — zero-shot multilingual text-to-speech supporting 600+ languages, without requiring ComfyUI.
+Zero-shot multilingual text-to-speech (600+ languages) — standalone desktop app, no ComfyUI required.
+
+![Python 3.11](https://img.shields.io/badge/Python-3.11-blue)
+![CUDA](https://img.shields.io/badge/CUDA-11.8%2F12.4%2F13.0-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## Features
 
-- **Voice Clone** — clone any voice from a 3–15 second reference audio (upload or record with mic)
+- **Voice Clone** — clone any voice from a 3-15 second reference audio
 - **Voice Design** — create a voice from text description (e.g. `"female, calm, british accent"`)
-- **Longform** — auto-split long text into chunks and merge into one audio file
-- **Voice Convert** — transcribe source audio → re-synthesize with a different reference voice
-- Auto-loads model on first generation, stays loaded in VRAM until you unload
-- Built-in sample scripts for recording reference voice (~5 seconds, multiple languages)
-- Saves all output to `output/` folder
+- **Longform** — auto-split long text into chunks, merge into one audio file
+- **Voice Convert** — re-synthesize audio with a different voice
+- Built-in mic recording (with AGC disabled for clean capture)
+- Auto-loads model on first use, stays in VRAM until you unload
+- Dark / Light mode toggle
+- All output saved to `output/` folder
+
+## Quick Start
+
+### Option A: Download ready-to-run (.rar)
+
+1. Download **[OmniVoice-TTS.rar](https://github.com/gasiaai/OmniVoice-TTS/releases/latest)** from Releases
+2. Extract anywhere
+3. Double-click **`install.bat`** — installs Python + PyTorch + dependencies automatically
+4. Double-click **`run.bat`** — browser opens, ready to use
+
+> No Python installation needed. Everything runs from a bundled `python_embeded/` folder.
+
+### Option B: Clone from GitHub
+
+```bash
+git clone https://github.com/gasiaai/OmniVoice-TTS.git
+cd OmniVoice-TTS
+```
+
+Then run `install.bat` and `run.bat` as above.
 
 ## Requirements
 
-- Python 3.10+
-- NVIDIA GPU recommended (CUDA 11.8+)
+- **OS:** Windows 10/11 (64-bit)
+- **GPU:** NVIDIA GPU recommended (CUDA 11.8+) — CPU mode available but slow
+- **RAM:** 8 GB minimum, 16 GB recommended
+- **Disk:** ~6 GB (Python + PyTorch + model)
+- **Internet:** Required for first install and first model download
 
-## Installation
+## How It Works
 
-Double-click `install.bat` — it will automatically:
-1. Create a virtual environment (`venv/`)
-2. Detect your GPU and install the correct PyTorch version
-3. Install OmniVoice and all dependencies
+```
+install.bat
+  -> Downloads Python 3.11.9 embeddable (if not present)
+  -> Patches Python for pip support (bootstrap.py)
+  -> Installs PyTorch (auto-detects CUDA version)
+  -> Installs OmniVoice + dependencies
 
-## Usage
+run.bat
+  -> Starts FastAPI server
+  -> Opens browser at http://localhost:7862
+```
 
-1. Double-click `run.bat`
-2. Browser opens at http://localhost:7861
-3. Choose a tab and click "สร้างเสียง" — model loads automatically on first use
+## GPU Support
+
+| GPU | CUDA Driver | PyTorch Build |
+|-----|-------------|---------------|
+| RTX 5000 series (Blackwell) | 13.x+ | cu130 |
+| RTX 3000/4000 series | 12.x | cu124 |
+| GTX 1000/RTX 2000 series | 11.x | cu118 |
+| No NVIDIA GPU | — | CPU only |
+
+CUDA version is detected automatically via `nvidia-smi`.
 
 ## Models
 
 | Model | Size | Notes |
 |-------|------|-------|
-| `drbaph/OmniVoice-bf16` | ~2 GB | Recommended, default |
+| `drbaph/OmniVoice-bf16` | ~2 GB | Default, recommended |
 | `k2-fsa/OmniVoice` | ~4 GB | Full fp32 precision |
 
-Models download automatically from HuggingFace on first use and are cached locally.
+Models download from HuggingFace on first use and are cached locally.
+
+## Updating
+
+Double-click **`update.bat`** — pulls latest code from GitHub and re-runs installer.
+
+## File Structure
+
+```
+OmniVoice-TTS/
+├── install.bat          # One-click installer
+├── run.bat              # Start the app
+├── update.bat           # Pull updates from GitHub
+├── bootstrap.py         # Sets up pip for embedded Python
+├── install.py           # Installs PyTorch + dependencies
+├── server.py            # FastAPI backend
+├── omnivoice_core.py    # TTS engine (no UI dependency)
+├── static/
+│   ├── index.html       # Web UI
+│   ├── style.css        # Pastel theme + dark mode
+│   └── app.js           # Client-side logic + SSE
+├── output/              # Generated audio files
+└── python_embeded/      # Bundled Python (created by install.bat)
+```
 
 ## Credits
 

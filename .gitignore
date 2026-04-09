@@ -11,3 +11,4 @@ _tmp_ref.*
 .env
 py_embed.zip
 get-pip.py
+_pip_tmp.whl

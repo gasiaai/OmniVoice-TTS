@@ -65,9 +65,9 @@ if not torch_ok:
 
     # เลือก PyTorch build ตาม CUDA driver version
     if cuda_major >= 13:
-        # Blackwell (RTX 5000 series) และ GPU ใหม่มาก — ต้องใช้ cu128+
-        index_url = "https://download.pytorch.org/whl/cu128"
-        label = "CUDA 12.8+ (Blackwell/RTX 5000 series)"
+        # Blackwell (RTX 5000 series) — cu130+
+        index_url = "https://download.pytorch.org/whl/cu130"
+        label = "CUDA 13.x (Blackwell/RTX 5000 series)"
     elif cuda_major >= 12:
         index_url = "https://download.pytorch.org/whl/cu124"
         label = "CUDA 12.4"
@@ -79,7 +79,7 @@ if not torch_ok:
         label = "CPU only"
 
     print(f"  ติดตั้ง PyTorch ({label})...")
-    pip("torch", "torchaudio", "--index-url", index_url)
+    pip("torch", "torchvision", "torchaudio", "--extra-index-url", index_url)
 
     import torch
     print(f"  PyTorch {torch.__version__}  |  CUDA: {torch.cuda.is_available()}")

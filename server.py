@@ -10,6 +10,11 @@ import asyncio
 import threading
 import tempfile
 
+# Ensure project dir is on sys.path (needed for python_embeded)
+_app_dir = os.path.dirname(os.path.abspath(__file__))
+if _app_dir not in sys.path:
+    sys.path.insert(0, _app_dir)
+
 # Fix Windows console encoding
 os.environ["PYTHONIOENCODING"] = "utf-8"
 if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
