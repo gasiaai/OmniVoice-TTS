@@ -21,8 +21,9 @@ def run(cmd: list, check=True, quiet=False) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, **kwargs)
 
 
-def pip(*args, quiet=False):
-    return run([sys.executable, "-m", "pip", "install", *args], quiet=quiet)
+def pip(*args, quiet=False, check=True):
+    return run([sys.executable, "-m", "pip", "install", "--no-warn-script-location",
+                *args], quiet=quiet, check=check)
 
 
 def section(msg: str):
@@ -33,7 +34,7 @@ def section(msg: str):
 
 # ── 1. อัปเกรด pip ────────────────────────────────────────────────────────────
 section("1/5  อัปเกรด pip")
-pip("--upgrade", "pip", quiet=True)
+pip("--upgrade", "pip", quiet=True, check=False)   # non-fatal: embedded Python OK
 print("  pip OK")
 
 # ── 2. ตรวจ / ติดตั้ง PyTorch ─────────────────────────────────────────────────
@@ -109,9 +110,13 @@ deps = [
     "soxr",
     "transformers>=4.57",
 ]
+failed = []
 for pkg in deps:
     print(f"  {pkg}...")
-    pip(pkg, quiet=True)
+    r = pip(pkg, quiet=True, check=False)
+    if r.returncode != 0:
+        print(f"  [RETRY] {pkg} (showing output)...")
+        pip(pkg, quiet=False)   # retry with visible output; raises on real failure
 print("  dependencies OK")
 
 # ── 5. สรุป ───────────────────────────────────────────────────────────────────
