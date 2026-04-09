@@ -105,6 +105,7 @@ deps = [
     "soundfile",
     "scipy",
     "pydub",
+    "imageio-ffmpeg",
     "sentencepiece",
     "jieba",
     "soxr",

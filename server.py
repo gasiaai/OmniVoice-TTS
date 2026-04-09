@@ -15,6 +15,15 @@ _app_dir = os.path.dirname(os.path.abspath(__file__))
 if _app_dir not in sys.path:
     sys.path.insert(0, _app_dir)
 
+# Point pydub at ffmpeg from imageio-ffmpeg (no system ffmpeg needed)
+try:
+    import imageio_ffmpeg
+    _ff = imageio_ffmpeg.get_ffmpeg_exe()
+    os.environ.setdefault("FFMPEG_BINARY", _ff)
+    os.environ.setdefault("PATH", os.environ.get("PATH", "") + os.pathsep + os.path.dirname(_ff))
+except Exception:
+    pass
+
 # Fix Windows console encoding
 os.environ["PYTHONIOENCODING"] = "utf-8"
 if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
