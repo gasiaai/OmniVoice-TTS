@@ -4,7 +4,6 @@ setlocal
 
 set "ROOT=%~dp0"
 
-REM ── หา Python: python_embeded (ใหม่) → venv (เก่า) ───────────────────────
 if exist "%ROOT%python_embeded\python.exe" (
     set "PY=%ROOT%python_embeded\python.exe"
     goto :run
@@ -14,7 +13,7 @@ if exist "%ROOT%venv\Scripts\python.exe" (
     goto :run
 )
 
-echo  ไม่พบ Python -- กรุณารัน install.bat ก่อน
+echo Please run install.bat first.
 pause
 exit /b 1
 
