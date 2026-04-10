@@ -9,6 +9,15 @@ import sys
 import os
 import threading
 
+# Add imageio-ffmpeg to PATH so pydub/torchaudio/transformers can find ffmpeg
+try:
+    import imageio_ffmpeg
+    _ffmpeg_dir = os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
+    if _ffmpeg_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+except Exception:
+    pass
+
 # Fix Windows console encoding
 os.environ["PYTHONIOENCODING"] = "utf-8"
 if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
