@@ -321,6 +321,7 @@ def generate_clone(text, ref_audio, ref_text, instruct,
     try:
         with _model_lock:
             if progress: progress(0.05, desc="กำลังโหลดโมเดล…")
+            print(f"[Clone] Generating ({len(text.strip())} chars)…")
             _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable)
             if progress: progress(0.2, desc="กำลังสร้างเสียง…")
             arr = _call_model(text.strip(), ref_audio, ref_text.strip() if ref_text else None,
@@ -328,6 +329,7 @@ def generate_clone(text, ref_audio, ref_text, instruct,
                               steps, guidance, speed, t_shift,
                               seed, duration, pos_temp, cls_temp, layer_penalty)
         path = save_audio(arr, "clone")
+        print(f"[Clone] Done ({time.time()-t0:.1f}s)")
         return path, f"สำเร็จ ({time.time()-t0:.1f}s)", get_gpu_info()
     except Exception as e:
         return None, f"เกิดข้อผิดพลาด: {e}", get_gpu_info()
@@ -347,12 +349,14 @@ def generate_design(text, instruct,
     try:
         with _model_lock:
             if progress: progress(0.05, desc="กำลังโหลดโมเดล…")
+            print(f"[Design] Generating ({len(text.strip())} chars)…")
             _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable)
             if progress: progress(0.2, desc="กำลังสร้างเสียง…")
             arr = _call_model(text.strip(), None, None,
                               instruct.strip(), steps, guidance, speed, t_shift,
                               seed, duration, pos_temp, cls_temp, layer_penalty)
         path = save_audio(arr, "design")
+        print(f"[Design] Done ({time.time()-t0:.1f}s)")
         return path, f"สำเร็จ ({time.time()-t0:.1f}s)", get_gpu_info()
     except Exception as e:
         return None, f"เกิดข้อผิดพลาด: {e}", get_gpu_info()
@@ -371,6 +375,7 @@ def generate_longform(text, ref_audio, ref_text, instruct,
     chunks = split_text(text.strip(), max_chars=int(chunk_size))
     total  = len(chunks)
     t0     = time.time()
+    print(f"[Longform] {len(text.strip())} chars → {total} chunk(s)")
 
     try:
         with _model_lock:
@@ -385,6 +390,7 @@ def generate_longform(text, ref_audio, ref_text, instruct,
 
             for i, chunk in enumerate(chunks):
                 if progress: progress((i + 0.5) / total, desc=f"Chunk {i+1}/{total}…")
+                print(f"[Longform] Chunk {i+1}/{total} ({len(chunk)} chars)…")
                 arr = _call_model(chunk, cur_ref_audio, cur_ref_text,
                                   instruct.strip() if instruct else None,
                                   steps, guidance, speed, t_shift,
@@ -407,6 +413,7 @@ def generate_longform(text, ref_audio, ref_text, instruct,
         if tmp_ref_path and os.path.exists(tmp_ref_path):
             os.remove(tmp_ref_path)
 
+        print(f"[Longform] Done: {total} chunks, {dur:.1f}s audio, {time.time()-t0:.1f}s elapsed")
         return path, f"สำเร็จ | {total} chunks | {dur:.1f}s | ({time.time()-t0:.1f}s)", get_gpu_info()
     except Exception as e:
         return None, f"เกิดข้อผิดพลาด: {e}", get_gpu_info()
@@ -442,22 +449,46 @@ def generate_voice_convert(src_path, src_text,
     try:
         with _model_lock:
             if progress: progress(0.05, desc="กำลังโหลดโมเดล…")
+            print("[VoiceConvert] Loading model…")
             _ensure_model(model_choice, dtype_choice, attn_choice, False)
             _ensure_whisper()
 
             text = src_text.strip() if src_text else ""
             if not text:
-                if progress: progress(0.2, desc="กำลัง transcribe…")
+                if progress: progress(0.1, desc="กำลัง transcribe…")
+                print("[VoiceConvert] Transcribing source audio…")
                 text = auto_transcribe(src_path)
             if not text:
                 return None, "", "Transcribe ไม่ได้ข้อความ", get_gpu_info()
 
-            if progress: progress(0.4, desc="กำลังสร้างเสียง…")
-            arr = _call_model(text, ref_audio, ref_text.strip() if ref_text else "",
-                              None, steps, guidance, speed, t_shift,
-                              seed, duration, pos_temp, cls_temp, layer_penalty)
+            # Split transcribed text into chunks for progress tracking
+            chunks = split_text(text, max_chars=200)
+            total = len(chunks)
+            print(f"[VoiceConvert] {len(text)} chars → {total} chunk(s)")
 
-        path = save_audio(arr, "vconv")
-        return path, text, f"สำเร็จ ({time.time()-t0:.1f}s)", get_gpu_info()
+            silence = np.zeros(int(SAMPLE_RATE * 100 / 1000), dtype=np.float32)  # 100ms gap
+            all_audio = []
+            ref_t = ref_text.strip() if ref_text else ""
+
+            for i, chunk in enumerate(chunks):
+                frac = 0.2 + 0.8 * (i / total)
+                if progress: progress(frac, desc=f"Chunk {i+1}/{total}…")
+                print(f"[VoiceConvert] Chunk {i+1}/{total} ({len(chunk)} chars)…")
+                arr = _call_model(chunk, ref_audio, ref_t,
+                                  None, steps, guidance, speed, t_shift,
+                                  seed, duration, pos_temp, cls_temp, layer_penalty)
+                all_audio.append(arr)
+                if i < total - 1:
+                    all_audio.append(silence)
+
+        if len(all_audio) == 1:
+            combined = all_audio[0]
+        else:
+            combined = np.concatenate(all_audio)
+        path = save_audio(combined, "vconv")
+        dur = len(combined) / SAMPLE_RATE
+        elapsed = time.time() - t0
+        print(f"[VoiceConvert] Done: {total} chunks, {dur:.1f}s audio, {elapsed:.1f}s elapsed")
+        return path, text, f"สำเร็จ | {total} chunk(s) | {dur:.1f}s | ({elapsed:.1f}s)", get_gpu_info()
     except Exception as e:
         return None, src_text or "", f"เกิดข้อผิดพลาด: {e}", get_gpu_info()
