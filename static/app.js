@@ -416,6 +416,7 @@ async function streamGenerate(endpoint, fd, prefix, onDone) {
         if (!line.startsWith('data:')) continue;
         try {
           const obj = JSON.parse(line.slice(5).trim());
+          console.log(`[SSE:${prefix}]`, obj.type, obj);
           if (obj.type === 'progress') {
             showProgress(prefix, obj.frac, obj.desc);
           } else if (obj.type === 'done') {
@@ -425,7 +426,9 @@ async function streamGenerate(endpoint, fd, prefix, onDone) {
             hideProgress(prefix);
             alert('เกิดข้อผิดพลาด:\n' + obj.message);
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('[SSE parse error]', line, e);
+        }
       }
     }
   } catch (e) {
@@ -474,6 +477,7 @@ document.getElementById('clone-gen-btn').addEventListener('click', async () => {
 
   await streamGenerate('/api/generate/clone', fd, 'clone', r => {
     if (r && r.file) showOutput('clone', r.file, r.status);
+    else if (r && r.status) alert(r.status);
   });
 });
 
@@ -493,6 +497,7 @@ document.getElementById('design-gen-btn').addEventListener('click', async () => 
 
   await streamGenerate('/api/generate/design', fd, 'design', r => {
     if (r && r.file) showOutput('design', r.file, r.status);
+    else if (r && r.status) alert(r.status);
   });
 });
 
@@ -517,6 +522,7 @@ document.getElementById('lf-gen-btn').addEventListener('click', async () => {
 
   await streamGenerate('/api/generate/longform', fd, 'lf', r => {
     if (r && r.file) showOutput('lf', r.file, r.status);
+    else if (r && r.status) alert(r.status);
   });
 });
 
@@ -570,6 +576,7 @@ document.getElementById('vc2-gen-btn').addEventListener('click', async () => {
   await streamGenerate('/api/generate/convert', fd, 'vc2', r => {
     if (!r) return;
     if (r.file) showOutput('vc2', r.file, r.status);
+    else if (r.status) alert(r.status);
     if (r.transcript) {
       document.getElementById('vc2-text-out').style.display = '';
       document.getElementById('vc2-text-out-box').textContent = r.transcript;

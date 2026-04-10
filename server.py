@@ -112,8 +112,10 @@ def _make_stream(fn, patch_fn, *args, **kwargs):
         try:
             out = fn(*args, progress=progress_cb, **kwargs)
             result_box.append(("ok", out))
+            print(f"[SSE] Generation completed: {type(out)}")
         except Exception as e:
             result_box.append(("error", str(e)))
+            print(f"[SSE] Generation error: {e}")
         finally:
             done_event.set()
 
@@ -129,9 +131,12 @@ def _make_stream(fn, patch_fn, *args, **kwargs):
 
         kind, val = result_box[0] if result_box else ("error", "no result")
         if kind == "error":
+            print(f"[SSE] Sending error: {val}")
             yield _sse({"type": "error", "message": val})
         else:
-            yield _sse({"type": "done", "result": patch_fn(val)})
+            result = patch_fn(val)
+            print(f"[SSE] Sending done: file={result.get('file') if result else None}")
+            yield _sse({"type": "done", "result": result})
 
     return event_gen()
 
