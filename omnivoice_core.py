@@ -197,7 +197,11 @@ def load_audio_tensor(path: str):
 def auto_transcribe(audio_path: str) -> str:
     if _whisper_pipe is None:
         return ""
-    result = _whisper_pipe(audio_path, return_timestamps=True)
+    # Load audio ourselves (soundfile, no ffmpeg) and pass dict to pipeline
+    audio, sr = sf.read(audio_path, dtype="float32")
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
+    result = _whisper_pipe({"raw": audio, "sampling_rate": sr}, return_timestamps=True)
     return result.get("text", "").strip()
 
 
