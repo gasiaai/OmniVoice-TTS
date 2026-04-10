@@ -352,7 +352,7 @@ function setGenBtnState(prefix, busy) {
   btn.disabled  = busy;
   btn.textContent = busy
     ? '⏳ กำลังสร้าง…'
-    : (prefix === 'vc2' ? '▶ แปลงเสียง' : '▶ สร้างเสียง');
+    : (prefix === 'vc2' ? '▶ พูดใหม่' : '▶ สร้างเสียง');
 }
 
 // Build FormData from element id map

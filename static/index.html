@@ -29,7 +29,7 @@
       <button class="mode-btn active" data-panel="clone">🎤 Voice Clone</button>
       <button class="mode-btn" data-panel="design">✨ Voice Design</button>
       <button class="mode-btn" data-panel="longform">📄 Longform</button>
-      <button class="mode-btn" data-panel="convert">🔄 Voice Convert</button>
+      <button class="mode-btn" data-panel="convert">🔄 Re-voice</button>
     </div>
 
     <div class="sidebar-section">
@@ -313,14 +313,17 @@
     </div><!-- /panel-longform -->
 
 
-    <!-- ══ Voice Convert ═════════════════════════════════════════════════ -->
+    <!-- ══ Re-voice ══════════════════════════════════════════════════════ -->
     <div class="panel" id="panel-convert">
+      <div style="padding:10px 14px;background:var(--primary-lt);border-radius:8px;font-size:13px;margin-bottom:14px;color:var(--text-muted)">
+        ถอดข้อความจากเสียงต้นทาง แล้วพูดใหม่ด้วยเสียง Reference — จังหวะและน้ำเสียงจะเปลี่ยนไปจากต้นฉบับ
+      </div>
 
       <div class="card">
         <label style="margin-bottom:10px">🔊 เสียงต้นทาง</label>
         <div class="drop-zone" id="vc2-drop">
           <input type="file" id="vc2-src-file" accept="audio/*">
-          <div>อัปโหลดไฟล์เสียงที่ต้องการแปลง</div>
+          <div>อัปโหลดไฟล์เสียงที่ต้องการพูดใหม่</div>
           <div style="font-size:11px;margin-top:3px;opacity:.6">.wav / .mp3 / .flac</div>
           <div class="drop-zone-name" id="vc2-src-name"></div>
         </div>
@@ -387,7 +390,7 @@
         </div>
       </details>
 
-      <button class="btn btn-primary" id="vc2-gen-btn" style="width:100%;padding:12px">▶ แปลงเสียง</button>
+      <button class="btn btn-primary" id="vc2-gen-btn" style="width:100%;padding:12px">▶ พูดใหม่</button>
 
       <div class="progress-wrap" id="vc2-progress">
         <progress id="vc2-prog-bar" value="0" max="1"></progress>
@@ -403,7 +406,7 @@
       </div>
 
       <div id="vc2-text-out" style="display:none">
-        <label>ข้อความที่ใช้สร้างเสียง</label>
+        <label>ข้อความที่ถอดได้ (ใช้สร้างเสียงใหม่)</label>
         <div class="transcript-box" id="vc2-text-out-box"></div>
       </div>
 
