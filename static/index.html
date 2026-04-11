@@ -79,11 +79,6 @@
           <textarea id="clone-text" rows="5"
             placeholder="พิมพ์ข้อความที่ต้องการสังเคราะห์เสียง&#10;&#10;เคล็ดลับ: ใส่ ... หรือ —— เพื่อเว้นวรรค&#10;[laughter] [sigh] [sniff] สำหรับเสียงแสดงอารมณ์"></textarea>
         </div>
-        <div>
-          <label for="clone-instruct">Dialect / Style <span style="font-weight:400;opacity:.7">(ไม่จำเป็น)</span></label>
-          <input type="text" id="clone-instruct"
-            placeholder="เช่น whisper / american accent / high pitch">
-        </div>
       </div>
 
       <!-- Ref audio -->
@@ -130,6 +125,11 @@
       <details class="adv">
         <summary>⚙️ Advanced</summary>
         <div class="adv-body">
+          <div style="margin-bottom:12px">
+            <label for="clone-instruct" style="font-size:12px">Style Override <span style="font-weight:400;opacity:.7">(ไม่จำเป็น — เช่น whisper, high pitch)</span></label>
+            <input type="text" id="clone-instruct"
+              placeholder="whisper / high pitch / american accent">
+          </div>
           <div class="slider-grid" id="clone-adv-sliders"></div>
           <details class="adv">
             <summary>🔬 Expert params</summary>
@@ -167,16 +167,33 @@
           <textarea id="design-text" rows="5" placeholder="พิมพ์ข้อความที่ต้องการสังเคราะห์เสียง"></textarea>
         </div>
         <div>
-          <label for="design-inst">Voice Description</label>
+          <label>Voice Description</label>
+
+          <!-- Presets -->
+          <div style="margin-bottom:10px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">Presets</div>
+            <div class="preset-pills" id="design-presets">
+              <button class="preset-pill" data-val="female, young adult">👩 Young Woman</button>
+              <button class="preset-pill" data-val="male, young adult">👨 Young Man</button>
+              <button class="preset-pill" data-val="female, middle-aged">👩‍💼 Woman (mid-age)</button>
+              <button class="preset-pill" data-val="male, middle-aged">👨‍💼 Man (mid-age)</button>
+              <button class="preset-pill" data-val="female, elderly, low pitch">👵 Old Woman</button>
+              <button class="preset-pill" data-val="male, elderly, very low pitch">👴 Old Man</button>
+              <button class="preset-pill" data-val="female, young adult, high pitch, british accent">🇬🇧 British Woman</button>
+              <button class="preset-pill" data-val="male, young adult, american accent">🇺🇸 American Man</button>
+              <button class="preset-pill" data-val="female, young adult, indian accent">🇮🇳 Indian Woman</button>
+              <button class="preset-pill" data-val="child, high pitch">🧒 Child</button>
+              <button class="preset-pill" data-val="female, whisper">🤫 Whisper</button>
+              <button class="preset-pill" data-val="male, very low pitch">🎙️ Deep Voice</button>
+            </div>
+          </div>
+
+          <!-- Custom -->
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">Custom <span style="opacity:.7">(แก้ไขหรือพิมพ์เอง)</span></div>
           <textarea id="design-inst" rows="2"
             placeholder="female, young adult, high pitch, british accent"></textarea>
-          <div style="font-size:11px;margin-top:6px;color:var(--text-muted);line-height:1.8">
-            <b>Gender:</b> male / female &nbsp;|&nbsp;
-            <b>Age:</b> child / teenager / young adult / middle-aged / elderly<br>
-            <b>Pitch:</b> very low pitch / low pitch / moderate pitch / high pitch / very high pitch<br>
-            <b>Accent:</b> american accent / british accent / australian accent / indian accent / chinese accent / korean accent / japanese accent / russian accent / portuguese accent / canadian accent<br>
-            <b>Style:</b> whisper &nbsp;|&nbsp;
-            คั่นด้วย <code>, </code> (comma + space) &nbsp;|&nbsp; ห้ามใส่ " หรือ '
+          <div style="font-size:11px;margin-top:5px;color:var(--text-muted)">
+            คั่นด้วย <code>, </code> (comma+space) &nbsp;·&nbsp; ห้ามใส่ " หรือ '
           </div>
         </div>
       </div>

@@ -481,6 +481,25 @@ document.getElementById('clone-gen-btn').addEventListener('click', async () => {
   });
 });
 
+// ── Voice Design presets ─────────────────────────────────────────────────────
+document.querySelectorAll('#design-presets .preset-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inst = document.getElementById('design-inst');
+    inst.value = btn.dataset.val;
+    // toggle active
+    document.querySelectorAll('#design-presets .preset-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Clear active preset when user edits manually
+document.getElementById('design-inst').addEventListener('input', () => {
+  const val = document.getElementById('design-inst').value.trim();
+  document.querySelectorAll('#design-presets .preset-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === val);
+  });
+});
+
 // ── Voice Design ─────────────────────────────────────────────────────────────
 document.getElementById('design-gen-btn').addEventListener('click', async () => {
   const text = document.getElementById('design-text').value;

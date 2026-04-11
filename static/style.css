@@ -321,6 +321,38 @@ select option { background: var(--surface); }
 
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 
+/* ── Preset pills ────────────────────────────────────────────────────────── */
+.preset-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset-pill {
+  padding: 5px 11px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms;
+  line-height: 1.4;
+}
+
+.preset-pill:hover {
+  background: var(--primary-lt);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.preset-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 .btn-icon {
   padding: 6px 10px;
   font-size: 12px;
