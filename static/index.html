@@ -82,7 +82,7 @@
         <div>
           <label for="clone-instruct">Dialect / Style <span style="font-weight:400;opacity:.7">(ไม่จำเป็น)</span></label>
           <input type="text" id="clone-instruct"
-            placeholder='เช่น "พูดช้าๆ" / "Sichuan dialect" / "whisper"'>
+            placeholder="เช่น whisper / american accent / high pitch">
         </div>
       </div>
 
@@ -167,9 +167,17 @@
           <textarea id="design-text" rows="5" placeholder="พิมพ์ข้อความที่ต้องการสังเคราะห์เสียง"></textarea>
         </div>
         <div>
-          <label for="design-inst">Voice Description <span style="font-weight:400;opacity:.7">(English)</span></label>
+          <label for="design-inst">Voice Description</label>
           <textarea id="design-inst" rows="2"
-            placeholder='"female, calm, low pitch, british accent"'></textarea>
+            placeholder="female, young adult, high pitch, british accent"></textarea>
+          <div style="font-size:11px;margin-top:6px;color:var(--text-muted);line-height:1.8">
+            <b>Gender:</b> male / female &nbsp;|&nbsp;
+            <b>Age:</b> child / teenager / young adult / middle-aged / elderly<br>
+            <b>Pitch:</b> very low pitch / low pitch / moderate pitch / high pitch / very high pitch<br>
+            <b>Accent:</b> american accent / british accent / australian accent / indian accent / chinese accent / korean accent / japanese accent / russian accent / portuguese accent / canadian accent<br>
+            <b>Style:</b> whisper &nbsp;|&nbsp;
+            คั่นด้วย <code>, </code> (comma + space) &nbsp;|&nbsp; ห้ามใส่ " หรือ '
+          </div>
         </div>
       </div>
 
@@ -260,7 +268,7 @@
 
           <div>
             <label for="lf-inst">Voice Design <span style="font-weight:400;opacity:.7">(ถ้าไม่มี ref audio)</span></label>
-            <textarea id="lf-inst" rows="2" placeholder='"female, calm"'></textarea>
+            <textarea id="lf-inst" rows="2" placeholder="female, young adult"></textarea>
           </div>
         </div>
       </details>
