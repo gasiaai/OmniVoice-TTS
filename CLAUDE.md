@@ -2,6 +2,8 @@
 
 This file is the entry point for any AI coding agent (Claude Code, Codex, Cursor, etc.) working in this repo. Read this first before touching code.
 
+> 🇹🇭 **อ่านไฟล์นี้ก่อนแก้โค้ดทุกครั้ง** — เป็นคู่มือสำหรับ AI agent (และมนุษย์ที่เพิ่งเข้าโปรเจกต์) บอกว่าแอปนี้คืออะไร โครงสร้างยังไง ห้ามใส่อะไรกลับ และต้องเช็คอะไรก่อนปิดงาน
+
 ## What this is
 
 Standalone desktop TTS app wrapping [k2-fsa/OmniVoice](https://github.com/k2-fsa/omnivoice) (zero-shot multilingual, 600+ languages). Windows-only, embedded Python runtime, FastAPI backend + vanilla-JS frontend. No ComfyUI dependency, no framework on the client side.
@@ -11,11 +13,18 @@ Three generation modes only:
 - **Voice Design** — generate voice from text description (e.g. `female, young adult, british accent`)
 - **Longform** — auto-chunk long text, optional voice consistency across chunks
 
+> 🇹🇭 **คืออะไร:** แอป TTS เดสก์ท็อปแบบ standalone ห่อโมเดล OmniVoice (zero-shot รองรับ 600+ ภาษา). รันบน Windows เท่านั้น, ใช้ Python ฝังในโฟลเดอร์ (`python_embeded/`), backend เป็น FastAPI + UI เป็น HTML/CSS/JS เปล่า ๆ ไม่มี React/Vue/บันเดิลใด ๆ. มี 3 โหมดเท่านั้น: Clone (โคลนเสียงจากไฟล์ ref 3–15 วิ), Design (อธิบายเสียงเป็นข้อความ), Longform (ข้อความยาวอัตโนมัติแบ่ง chunk)
+
 ## What this is NOT (do not re-add)
 
 - **No "Re-voice" / Voice Convert tab.** It was removed because zero-shot clone produces equivalent quality with less UX confusion. Do not add it back.
 - **No Whisper / ASR step.** An A/B test confirmed zero-shot clone matches Whisper-aided generation. Whisper was dropped to cut model load time and dependencies. Do not reintroduce `openai-whisper` or `faster-whisper`.
 - **No ComfyUI nodes.** This is the standalone fork; keep it standalone.
+
+> 🇹🇭 **ห้ามใส่อะไรกลับ:**
+> - ❌ แท็บ "Re-voice" / Voice Convert — ลบไปแล้ว เพราะ zero-shot clone คุณภาพเท่ากันแต่ UX สับสนน้อยกว่า
+> - ❌ Whisper / ASR — ทดสอบ A/B แล้วไม่จำเป็น (zero-shot ทำได้เทียบเท่า) ลบทิ้งเพื่อลด dep + เวลาโหลดโมเดล
+> - ❌ ComfyUI node — เวอร์ชันนี้คือ fork แบบ standalone ห้ามผูกกับ ComfyUI
 
 ## Architecture
 
@@ -35,10 +44,17 @@ run.bat
 - `omnivoice_core.py` — All business logic: model load/unload, text chunking, audio I/O, the three `generate_*` functions. UI-free; safe to import from another Python project (see `omnivoice-inprocess` pattern in user memory).
 - `static/` — Pure HTML + CSS + JS. No bundler, no framework. `app.js` handles SSE streaming and DOM updates directly.
 
+> 🇹🇭 **สถาปัตยกรรม:** `run.bat` เรียก `server.py` → FastAPI เปิด port 7862 (ถ้าไม่ว่างจะหา port ถัดไปจนถึง 7900). หน้าที่แบ่งกัน 3 ไฟล์:
+> - `server.py` = wrapper บาง ๆ รับ HTTP/Form แล้วโยนเข้า thread → ส่ง SSE event กลับ ห้ามใส่ logic ที่นี่
+> - `omnivoice_core.py` = หัวใจของแอป โหลด/unload โมเดล, แบ่ง chunk, I/O เสียง, ฟังก์ชัน `generate_*` 3 ตัว ไม่มี UI dep — เอาไปใช้ใน project อื่นแบบ in-process ได้
+> - `static/` = HTML/CSS/JS เปล่า ไม่มี build step. `app.js` รับ SSE แล้วอัปเดต DOM ตรง ๆ
+
 ### Model lifecycle
 - Lazy-loaded on first generate via `_ensure_model()`. Kept in a module-level global guarded by `_model_lock` (a `threading.Lock`) — generations are serialized.
 - Switching `model_choice` triggers unload + reload of the new model_id.
 - `unload_model()` clears the global and runs `gc.collect()` + `torch.cuda.empty_cache()`.
+
+> 🇹🇭 **วงจรชีวิตโมเดล:** โหลดครั้งแรกตอนสั่งสร้างเสียง (lazy), เก็บเป็น global ล็อกด้วย `_model_lock` → request ที่เข้ามาพร้อมกันจะรอคิวกัน. สลับ model_id = unload เก่าก่อนโหลดใหม่. ปุ่ม Unload ใน UI เรียก `unload_model()` ล้าง VRAM
 
 ### SSE protocol (server → client)
 Each event is `data: {json}\n\n` where json is one of:
@@ -47,6 +63,8 @@ Each event is `data: {json}\n\n` where json is one of:
 - `{"type": "error", "message": "..."}`
 
 Generated files are saved under `output/` and served via the `/output` static mount.
+
+> 🇹🇭 **SSE protocol:** server ส่ง event 3 ชนิด — `progress` (มี frac 0–1 + คำอธิบาย), `done` (มี path ไฟล์ + status + GPU info), `error` (มี message). ถ้าจะแก้ shape ของ event ต้องแก้ทั้ง `server.py` และ `static/app.js` พร้อมกัน
 
 ## Runtime layout (Windows, embedded Python)
 
@@ -70,6 +88,11 @@ OmniVoiceApp/
 - Windows 260-char path limit. `install.bat` refuses to install if the full path exceeds ~180 chars. Tell users to extract to `C:\OmniVoice-TTS\`, never Desktop / Downloads.
 - ffmpeg is provided by the `imageio-ffmpeg` pip package; `omnivoice_core.py` prepends its bin dir to `PATH` at import time so pydub / transformers find it without a separate ffmpeg install.
 
+> 🇹🇭 **ข้อจำกัดสำคัญ:**
+> - runtime หลักคือ `python_embeded\python.exe` (Python 3.11.9 ฝัง) ไม่ใช่ venv. ใช้ `python311._pth` เปิด site-packages — bootstrap.py จัดการให้แล้ว
+> - Windows path ห้ามเกิน 260 ตัวอักษร — `install.bat` จะปฏิเสธถ้า path ยาวเกิน ~180. ต้องบอกผู้ใช้ extract ไปที่ `C:\OmniVoice-TTS\` ห้ามอยู่บน Desktop/Downloads
+> - ffmpeg มาจาก pip package `imageio-ffmpeg` (ไม่ต้องลง ffmpeg แยก). `omnivoice_core.py` prepend ลง `PATH` ตอน import เพื่อให้ pydub/transformers หาเจอ
+
 ## Dev workflow
 
 There is no test suite, no linter, no CI. Verification is manual.
@@ -90,6 +113,8 @@ python_embeded\python.exe -m pip install <package>
 # OR re-run install.bat (idempotent)
 ```
 
+> 🇹🇭 **วิธีทดสอบ:** ไม่มี test/lint/CI — ต้อง smoke-test ด้วยมือ. รัน `run.bat` แล้วลองสร้างเสียงทั้ง 3 โหมด ฟังผลด้วยหู. ถ้าทำงานแค่ UI ไม่ต้องโหลดโมเดล (แค่ห้ามกดปุ่มสร้าง). เพิ่ม dep ใหม่ → ทั้ง `install.py` (`deps` list) และ `requirements.txt`
+
 ## Code conventions
 
 - **Comments** — mostly absent. Don't add explanatory comments unless the *why* is non-obvious (a workaround, a Windows quirk, a model API gotcha).
@@ -97,6 +122,13 @@ python_embeded\python.exe -m pip install <package>
 - **Encoding** — both `server.py` and `omnivoice_core.py` reconfigure stdout/stderr to UTF-8 at startup; preserve that boilerplate when refactoring.
 - **No new files unless necessary.** The whole app is intentionally < 10 source files. Prefer extending `omnivoice_core.py` over creating new modules.
 - **Frontend** — vanilla JS only. No build step, no npm, no React. CSS uses CSS variables for the light/dark theme; check `static/style.css` before adding new colors.
+
+> 🇹🇭 **ธรรมเนียมการเขียนโค้ด:**
+> - คอมเมนต์น้อย ๆ — เขียนเฉพาะตอน *ทำไม* ไม่ชัดเจน (workaround, Windows quirk, gotcha ของโมเดล)
+> - text ที่ user เห็นเป็นภาษาไทยได้ (error/status/sample script). log mix ไทย-อังกฤษได้. แต่ตัวแปร/ค่าคงที่/identifier ต้องเป็นอังกฤษ
+> - boilerplate UTF-8 reconfigure ที่หัวไฟล์ — ห้ามลบ ไม่งั้น Thai log แตกบน Windows console
+> - อย่าสร้างไฟล์ใหม่ถ้าไม่จำเป็น — แอปนี้ตั้งใจให้ < 10 ไฟล์. ขยาย `omnivoice_core.py` ดีกว่าแยก module
+> - frontend เป็น vanilla JS เท่านั้น ห้าม React/Vue/npm/บันเดิล. ธีมใช้ CSS variable — ดู `static/style.css` ก่อนเพิ่มสีใหม่
 
 ## Common tasks — where to look
 
@@ -110,6 +142,14 @@ python_embeded\python.exe -m pip install <package>
 | Add a new dependency                      | `install.py` `deps` list + `requirements.txt` |
 | Theme / styling                           | `static/style.css` (CSS vars at `:root` and `[data-theme="dark"]`) |
 
+> 🇹🇭 **อยากแก้อะไร → ไปที่ไหน:**
+> - เพิ่ม/แก้ parameter สร้างเสียง → แก้ 3 ที่: `omnivoice_core.py` (`_call_model`), `server.py` (`Form()`), `static/app.js` (form data)
+> - เพิ่มโหมด UI ใหม่ → `static/index.html` (ปุ่ม + panel) + `static/app.js`
+> - chunk ข้อความ → `split_text()` ใน core
+> - sample script ตอนอัดเสียง → `SAMPLE_SCRIPTS` ใน core
+> - logic เลือก CUDA / PyTorch build → `install.py`
+> - ธีม/สี → `static/style.css` (`:root` กับ `[data-theme="dark"]`)
+
 ## Distribution
 
 Two channels, kept in sync:
@@ -118,9 +158,13 @@ Two channels, kept in sync:
 
 Don't break the no-git-installed path of `update.bat`. Test it if you change `update.bat` or the repo layout.
 
+> 🇹🇭 **ช่องทางแจกจ่าย:** มี 2 ทาง — (1) clone จาก GitHub แล้วรัน install/run, (2) โหลด .rar จาก Releases. ผู้ใช้ที่โหลด .rar ตอน update ครั้งแรก `update.bat` จะ `git init` + `git remote add` + `reset --hard origin/main` ให้อัตโนมัติ. **อย่าทำพังเส้นทาง .rar** ตอนแก้ `update.bat` หรือเปลี่ยน repo layout
+
 ## Future direction (heads-up)
 
 The user is planning a **Tauri 2.x desktop rewrite** in a separate folder for commercial release. This current FastAPI app stays as the reference implementation. Don't refactor this app to share code with the future Tauri version — keep this one stable and simple. The Tauri rewrite will use the in-process embedding pattern (see `omnivoice-inprocess` skill in user's notes), not HTTP.
+
+> 🇹🇭 **ทิศทางอนาคต:** เจ้าของวางแผนเขียนเวอร์ชัน Tauri 2.x (สำหรับขายเชิงพาณิชย์) ในโฟลเดอร์ใหม่ — แอป FastAPI นี้ **จะอยู่เป็น reference**. อย่ารีแฟกเตอร์แอปนี้ให้ใช้โค้ดร่วมกับ Tauri version. Tauri จะ embed OmniVoice แบบ in-process (ไม่ใช่ HTTP)
 
 ## Things to double-check before declaring "done"
 
@@ -129,6 +173,13 @@ The user is planning a **Tauri 2.x desktop rewrite** in a separate folder for co
 - [ ] If you edited `install.py` / `requirements.txt` / `bootstrap.py`: blow away `python_embeded/` and re-run `install.bat` from scratch on a clean path.
 - [ ] If you changed SSE event shapes: grep `static/app.js` for `event.data` / `JSON.parse` and update both sides.
 - [ ] No new `.wav` / `.mp3` / `.flac` files committed. `.gitignore` excludes them but double-check `git status`.
+
+> 🇹🇭 **เช็คก่อนปิดงาน:**
+> - [ ] รัน `run.bat` แล้วสร้างเสียงในโหมดที่แก้ — ฟังด้วยหู
+> - [ ] `/api/status` ยัง return JSON ถูกต้อง (`model_loaded`, `gpu_info`)
+> - [ ] ถ้าแตะ `install.py` / `requirements.txt` / `bootstrap.py` → ลบ `python_embeded/` แล้วลง install ใหม่จาก path สะอาด
+> - [ ] ถ้าแก้ SSE event shape → grep `static/app.js` หา `event.data` / `JSON.parse` แก้ทั้งสองฝั่ง
+> - [ ] อย่าเผลอ commit ไฟล์ `.wav`/`.mp3`/`.flac` — `.gitignore` กรองอยู่แล้วแต่เช็ค `git status` ก่อน
 
 ## Credits
 
