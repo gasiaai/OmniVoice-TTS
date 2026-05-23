@@ -87,14 +87,6 @@ def _patch_result_clone(result):
     return {"file": _to_url(file_path), "status": status, "gpu_info": gpu_info}
 
 
-def _patch_result_convert(result):
-    if result is None:
-        return None
-    file_path, transcript, status, gpu_info = result
-    return {"file": _to_url(file_path), "transcript": transcript,
-            "status": status, "gpu_info": gpu_info}
-
-
 # ─── SSE STREAM FACTORY ────────────────────────────────────────────────────────
 def _make_stream(fn, patch_fn, *args, **kwargs):
     """
@@ -163,14 +155,6 @@ async def api_unload():
     return JSONResponse({"message": msg, "gpu_info": gpu})
 
 
-# ─── TRANSCRIBE ────────────────────────────────────────────────────────────────
-@app.post("/api/transcribe")
-async def api_transcribe(audio: UploadFile = File(...)):
-    path = await _save_upload(audio)
-    text, status = core.transcribe_source(path)
-    return JSONResponse({"text": text, "status": status})
-
-
 # ─── SAMPLE SCRIPTS ────────────────────────────────────────────────────────────
 @app.get("/api/sample_scripts")
 async def api_sample_scripts():
@@ -181,7 +165,6 @@ async def api_sample_scripts():
 @app.post("/api/generate/clone")
 async def api_generate_clone(
     text:           str = Form(...),
-    ref_text:       str = Form(""),
     instruct:       str = Form(""),
     steps:          int = Form(32),
     guidance:     float = Form(2.0),
@@ -195,17 +178,15 @@ async def api_generate_clone(
     model_choice:   str = Form("OmniVoice-bf16 (~2 GB, แนะนำ)"),
     dtype_choice:   str = Form("auto"),
     attn_choice:    str = Form("auto"),
-    whisper_enable: str = Form("false"),
     ref_audio: UploadFile = File(None),
 ):
     ref_path = await _save_upload(ref_audio)
     stream = _make_stream(
         core.generate_clone, _patch_result_clone,
-        text, ref_path, ref_text, instruct,
+        text, ref_path, instruct,
         steps, guidance, speed, t_shift,
         seed, duration, pos_temp, cls_temp, layer_penalty,
         model_choice, dtype_choice, attn_choice,
-        whisper_enable.lower() == "true",
     )
     return StreamingResponse(stream, media_type="text/event-stream")
 
@@ -227,7 +208,6 @@ async def api_generate_design(
     model_choice:   str = Form("OmniVoice-bf16 (~2 GB, แนะนำ)"),
     dtype_choice:   str = Form("auto"),
     attn_choice:    str = Form("auto"),
-    whisper_enable: str = Form("false"),
 ):
     stream = _make_stream(
         core.generate_design, _patch_result_clone,
@@ -235,7 +215,6 @@ async def api_generate_design(
         steps, guidance, speed, t_shift,
         seed, duration, pos_temp, cls_temp, layer_penalty,
         model_choice, dtype_choice, attn_choice,
-        whisper_enable.lower() == "true",
     )
     return StreamingResponse(stream, media_type="text/event-stream")
 
@@ -244,7 +223,6 @@ async def api_generate_design(
 @app.post("/api/generate/longform")
 async def api_generate_longform(
     text:            str = Form(...),
-    ref_text:        str = Form(""),
     instruct:        str = Form(""),
     steps:           int = Form(32),
     guidance:      float = Form(2.0),
@@ -261,51 +239,16 @@ async def api_generate_longform(
     model_choice:    str = Form("OmniVoice-bf16 (~2 GB, แนะนำ)"),
     dtype_choice:    str = Form("auto"),
     attn_choice:     str = Form("auto"),
-    whisper_enable:  str = Form("false"),
     ref_audio: UploadFile = File(None),
 ):
     ref_path = await _save_upload(ref_audio)
     stream = _make_stream(
         core.generate_longform, _patch_result_clone,
-        text, ref_path, ref_text, instruct,
+        text, ref_path, instruct,
         steps, guidance, speed, t_shift,
         seed, duration, pos_temp, cls_temp, layer_penalty,
         chunk_size, silence_ms,
         use_consistency.lower() == "true",
-        model_choice, dtype_choice, attn_choice,
-        whisper_enable.lower() == "true",
-    )
-    return StreamingResponse(stream, media_type="text/event-stream")
-
-
-# ─── GENERATE: VOICE CONVERT ───────────────────────────────────────────────────
-@app.post("/api/generate/convert")
-async def api_generate_convert(
-    src_text:      str = Form(""),
-    ref_text:      str = Form(""),
-    steps:         int = Form(32),
-    guidance:    float = Form(2.0),
-    speed:       float = Form(1.0),
-    t_shift:     float = Form(0.1),
-    seed:          int = Form(0),
-    duration:    float = Form(0.0),
-    pos_temp:    float = Form(5.0),
-    cls_temp:    float = Form(0.0),
-    layer_penalty:float = Form(5.0),
-    model_choice:  str = Form("OmniVoice-bf16 (~2 GB, แนะนำ)"),
-    dtype_choice:  str = Form("auto"),
-    attn_choice:   str = Form("auto"),
-    src_audio: UploadFile = File(None),
-    ref_audio: UploadFile = File(None),
-):
-    src_path = await _save_upload(src_audio)
-    ref_path = await _save_upload(ref_audio)
-    stream = _make_stream(
-        core.generate_voice_convert, _patch_result_convert,
-        src_path, src_text,
-        ref_path, ref_text,
-        steps, guidance, speed, t_shift,
-        seed, duration, pos_temp, cls_temp, layer_penalty,
         model_choice, dtype_choice, attn_choice,
     )
     return StreamingResponse(stream, media_type="text/event-stream")

@@ -2,7 +2,6 @@
 # pip install omnivoice --no-deps
 
 # จากนั้นติดตั้ง dependencies เพิ่มเติม
-gradio>=4.0
 soundfile
 scipy
 pydub

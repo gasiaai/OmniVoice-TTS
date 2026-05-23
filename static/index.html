@@ -29,7 +29,6 @@
       <button class="mode-btn active" data-panel="clone">🎤 Voice Clone</button>
       <button class="mode-btn" data-panel="design">✨ Voice Design</button>
       <button class="mode-btn" data-panel="longform">📄 Longform</button>
-      <button class="mode-btn" data-panel="convert">🔄 Re-voice</button>
     </div>
 
     <div class="sidebar-section">
@@ -112,14 +111,6 @@
           </div>
           <audio class="mic-audio" id="clone-mic-audio" controls style="display:none"></audio>
         </div>
-
-        <div class="row" style="margin-top:12px">
-          <div>
-            <label for="clone-ref-txt">Transcript ของ Reference <span style="font-weight:400;opacity:.7">(ไม่จำเป็น)</span></label>
-            <input type="text" id="clone-ref-txt" placeholder="ปล่อยว่างได้ — Whisper จะโหลดอัตโนมัติ">
-          </div>
-          <button class="btn btn-sm" id="clone-asr-btn" style="align-self:flex-end">🔍 Transcribe</button>
-        </div>
       </div>
 
       <details class="adv">
@@ -169,31 +160,72 @@
         <div>
           <label>Voice Description</label>
 
-          <!-- Presets -->
-          <div style="margin-bottom:10px">
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">Presets</div>
-            <div class="preset-pills" id="design-presets">
-              <button class="preset-pill" data-val="female, young adult">👩 Young Woman</button>
-              <button class="preset-pill" data-val="male, young adult">👨 Young Man</button>
-              <button class="preset-pill" data-val="female, middle-aged">👩‍💼 Woman (mid-age)</button>
-              <button class="preset-pill" data-val="male, middle-aged">👨‍💼 Man (mid-age)</button>
-              <button class="preset-pill" data-val="female, elderly, low pitch">👵 Old Woman</button>
-              <button class="preset-pill" data-val="male, elderly, very low pitch">👴 Old Man</button>
-              <button class="preset-pill" data-val="female, young adult, high pitch, british accent">🇬🇧 British Woman</button>
-              <button class="preset-pill" data-val="male, young adult, american accent">🇺🇸 American Man</button>
-              <button class="preset-pill" data-val="female, young adult, indian accent">🇮🇳 Indian Woman</button>
-              <button class="preset-pill" data-val="child, high pitch">🧒 Child</button>
-              <button class="preset-pill" data-val="female, whisper">🤫 Whisper</button>
-              <button class="preset-pill" data-val="male, very low pitch">🎙️ Deep Voice</button>
-            </div>
-          </div>
+          <!-- Keyword chip builder -->
+          <div class="kw-builder" id="design-keywords">
 
-          <!-- Custom -->
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">Custom <span style="opacity:.7">(แก้ไขหรือพิมพ์เอง)</span></div>
-          <textarea id="design-inst" rows="2"
-            placeholder="female, young adult, high pitch, british accent"></textarea>
-          <div style="font-size:11px;margin-top:5px;color:var(--text-muted)">
-            คั่นด้วย <code>, </code> (comma+space) &nbsp;·&nbsp; ห้ามใส่ " หรือ '
+            <div class="kw-row">
+              <span class="kw-cat">เพศ</span>
+              <div class="kw-chips">
+                <button class="kw-chip" data-cat="gender" data-val="female">female <span class="kw-th">หญิง</span></button>
+                <button class="kw-chip" data-cat="gender" data-val="male">male <span class="kw-th">ชาย</span></button>
+              </div>
+            </div>
+
+            <div class="kw-row">
+              <span class="kw-cat">อายุ</span>
+              <div class="kw-chips">
+                <button class="kw-chip" data-cat="age" data-val="child">child <span class="kw-th">เด็ก</span></button>
+                <button class="kw-chip" data-cat="age" data-val="teenager">teenager <span class="kw-th">วัยรุ่น</span></button>
+                <button class="kw-chip" data-cat="age" data-val="young adult">young adult <span class="kw-th">หนุ่มสาว</span></button>
+                <button class="kw-chip" data-cat="age" data-val="middle-aged">middle-aged <span class="kw-th">กลางคน</span></button>
+                <button class="kw-chip" data-cat="age" data-val="elderly">elderly <span class="kw-th">สูงอายุ</span></button>
+              </div>
+            </div>
+
+            <div class="kw-row">
+              <span class="kw-cat">เสียง</span>
+              <div class="kw-chips">
+                <button class="kw-chip" data-cat="pitch" data-val="very high pitch">very high <span class="kw-th">สูงมาก</span></button>
+                <button class="kw-chip" data-cat="pitch" data-val="high pitch">high <span class="kw-th">สูง</span></button>
+                <button class="kw-chip" data-cat="pitch" data-val="moderate pitch">moderate <span class="kw-th">ปานกลาง</span></button>
+                <button class="kw-chip" data-cat="pitch" data-val="low pitch">low <span class="kw-th">ต่ำ</span></button>
+                <button class="kw-chip" data-cat="pitch" data-val="very low pitch">very low <span class="kw-th">ต่ำมาก</span></button>
+              </div>
+            </div>
+
+            <div class="kw-row">
+              <span class="kw-cat">สำเนียง</span>
+              <div class="kw-chips">
+                <button class="kw-chip" data-cat="accent" data-val="american accent">american <span class="kw-th">อเมริกัน</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="british accent">british <span class="kw-th">อังกฤษ</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="australian accent">australian <span class="kw-th">ออสเตรเลีย</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="canadian accent">canadian <span class="kw-th">แคนาดา</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="indian accent">indian <span class="kw-th">อินเดีย</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="chinese accent">chinese <span class="kw-th">จีน</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="korean accent">korean <span class="kw-th">เกาหลี</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="japanese accent">japanese <span class="kw-th">ญี่ปุ่น</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="portuguese accent">portuguese <span class="kw-th">โปรตุเกส</span></button>
+                <button class="kw-chip" data-cat="accent" data-val="russian accent">russian <span class="kw-th">รัสเซีย</span></button>
+              </div>
+            </div>
+
+            <div class="kw-row">
+              <span class="kw-cat">สไตล์</span>
+              <div class="kw-chips">
+                <button class="kw-chip" data-cat="style" data-val="whisper">whisper <span class="kw-th">กระซิบ</span></button>
+              </div>
+            </div>
+
+          </div><!-- /kw-builder -->
+
+          <!-- Custom / composed result -->
+          <div style="margin-top:10px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">แก้ไขหรือพิมพ์เอง</div>
+            <textarea id="design-inst" rows="2"
+              placeholder="female, young adult, high pitch, british accent"></textarea>
+            <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">
+              คั่นด้วย <code>, </code> (comma+space) &nbsp;·&nbsp; ห้ามใส่ " หรือ '
+            </div>
           </div>
         </div>
       </div>
@@ -279,11 +311,6 @@
           </div>
 
           <div>
-            <label for="lf-ref-txt">Transcript <span style="font-weight:400;opacity:.7">(ไม่จำเป็น)</span></label>
-            <input type="text" id="lf-ref-txt" placeholder="ปล่อยว่างได้">
-          </div>
-
-          <div>
             <label for="lf-inst">Voice Design <span style="font-weight:400;opacity:.7">(ถ้าไม่มี ref audio)</span></label>
             <textarea id="lf-inst" rows="2" placeholder="female, young adult"></textarea>
           </div>
@@ -336,106 +363,6 @@
       </div>
 
     </div><!-- /panel-longform -->
-
-
-    <!-- ══ Re-voice ══════════════════════════════════════════════════════ -->
-    <div class="panel" id="panel-convert">
-      <div style="padding:10px 14px;background:var(--primary-lt);border-radius:8px;font-size:13px;margin-bottom:14px;color:var(--text-muted)">
-        ถอดข้อความจากเสียงต้นทาง แล้วพูดใหม่ด้วยเสียง Reference — จังหวะและน้ำเสียงจะเปลี่ยนไปจากต้นฉบับ
-      </div>
-
-      <div class="card">
-        <label style="margin-bottom:10px">🔊 เสียงต้นทาง</label>
-        <div class="drop-zone" id="vc2-drop">
-          <input type="file" id="vc2-src-file" accept="audio/*">
-          <div>อัปโหลดไฟล์เสียงที่ต้องการพูดใหม่</div>
-          <div style="font-size:11px;margin-top:3px;opacity:.6">.wav / .mp3 / .flac</div>
-          <div class="drop-zone-name" id="vc2-src-name"></div>
-        </div>
-
-        <div style="margin-top:12px">
-          <label for="vc2-src-text">ข้อความจากเสียงต้นทาง <span style="font-weight:400;opacity:.7">(แก้ไขได้)</span></label>
-          <textarea id="vc2-src-text" rows="3"
-            placeholder="กด Transcribe หรือพิมพ์เองก็ได้"></textarea>
-        </div>
-
-        <div class="row" style="margin-top:10px;align-items:center">
-          <button class="btn btn-sm" id="vc2-transcribe-btn">🔍 Transcribe (Whisper)</button>
-          <span id="vc2-transcribe-status" style="font-size:12px;color:var(--text-muted)"></span>
-        </div>
-      </div>
-
-      <div class="card">
-        <label style="margin-bottom:10px">🎵 เสียง Reference <span style="font-weight:400;opacity:.7">(เสียงที่ต้องการเปลี่ยนเป็น)</span></label>
-        <div class="tab-bar">
-          <button class="tab-btn active" data-tab="vc2-upload">📁 อัปโหลด</button>
-          <button class="tab-btn" data-tab="vc2-mic">🎙️ อัดเสียง</button>
-        </div>
-
-        <div class="tab-pane active" id="vc2-upload">
-          <div class="drop-zone" id="vc2-ref-drop">
-            <input type="file" id="vc2-ref-file" accept="audio/*">
-            <div>Reference Audio</div>
-            <div style="font-size:11px;margin-top:3px;opacity:.6">.wav / .mp3 / .flac</div>
-            <div class="drop-zone-name" id="vc2-ref-name"></div>
-          </div>
-        </div>
-
-        <div class="tab-pane" id="vc2-mic">
-          <div style="margin-bottom:10px">
-            <label for="vc2-script-dd">สคริปต์</label>
-            <select id="vc2-script-dd"></select>
-          </div>
-          <div id="vc2-script-box" class="transcript-box" style="margin-bottom:12px"></div>
-          <div class="mic-row">
-            <button class="btn btn-sm" id="vc2-rec-btn">⏺ อัด</button>
-            <div class="rec-dot" id="vc2-rec-dot"></div>
-            <span class="mic-timer" id="vc2-rec-timer"></span>
-            <button class="btn btn-sm" id="vc2-rec-stop" style="display:none">⏹ หยุด</button>
-          </div>
-          <audio class="mic-audio" id="vc2-mic-audio" controls style="display:none"></audio>
-        </div>
-
-        <div style="margin-top:12px">
-          <label for="vc2-ref-txt">Transcript ของ Reference <span style="font-weight:400;opacity:.7">(ไม่จำเป็น)</span></label>
-          <input type="text" id="vc2-ref-txt" placeholder="ปล่อยว่างได้">
-        </div>
-      </div>
-
-      <details class="adv">
-        <summary>⚙️ Advanced</summary>
-        <div class="adv-body">
-          <div class="slider-grid" id="vc2-adv-sliders"></div>
-          <details class="adv">
-            <summary>🔬 Expert params</summary>
-            <div class="adv-body">
-              <div class="slider-grid" id="vc2-expert-sliders"></div>
-            </div>
-          </details>
-        </div>
-      </details>
-
-      <button class="btn btn-primary" id="vc2-gen-btn" style="width:100%;padding:12px">▶ พูดใหม่</button>
-
-      <div class="progress-wrap" id="vc2-progress">
-        <progress id="vc2-prog-bar" value="0" max="1"></progress>
-        <div class="progress-desc" id="vc2-prog-desc"></div>
-      </div>
-
-      <div class="output-wrap" id="vc2-output">
-        <audio id="vc2-audio" controls></audio>
-        <div class="output-meta">
-          <span class="output-status" id="vc2-status"></span>
-          <a class="btn btn-sm" id="vc2-dl" download>⬇ Download</a>
-        </div>
-      </div>
-
-      <div id="vc2-text-out" style="display:none">
-        <label>ข้อความที่ถอดได้ (ใช้สร้างเสียงใหม่)</label>
-        <div class="transcript-box" id="vc2-text-out-box"></div>
-      </div>
-
-    </div><!-- /panel-convert -->
 
   </main>
 </div>

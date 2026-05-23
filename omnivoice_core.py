@@ -1,4 +1,4 @@
-# OmniVoice TTS — Core Business Logic (no Gradio dependency)
+# OmniVoice TTS — Core Business Logic
 #
 # Credits:
 #   - OmniVoice model: k2-fsa/OmniVoice (https://github.com/k2-fsa/omnivoice)
@@ -67,7 +67,6 @@ SAMPLE_SCRIPTS = {
 
 # ─── MODEL GLOBALS ─────────────────────────────────────────────────────────────
 _model           = None
-_whisper_pipe    = None
 _loaded_model_id = None   # แค่เก็บ model_id ที่โหลดอยู่
 _model_lock      = threading.Lock()
 
@@ -84,9 +83,9 @@ def get_gpu_info():
 
 
 # ─── AUTO-LOAD ─────────────────────────────────────────────────────────────────
-def _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable):
+def _ensure_model(model_choice, dtype_choice, attn_choice):
     """โหลดโมเดลถ้ายังไม่ได้โหลด หรือถ้าสลับ model_id"""
-    global _model, _whisper_pipe, _loaded_model_id
+    global _model, _loaded_model_id
 
     model_id = MODEL_CHOICES[model_choice]
 
@@ -135,45 +134,12 @@ def _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable):
     _loaded_model_id = model_id
     print(f"[OmniVoice] โหลดสำเร็จ — พร้อมใช้งาน")
 
-    if whisper_enable and _whisper_pipe is None:
-        print("[OmniVoice] กำลังโหลด Whisper ...")
-        try:
-            from transformers import pipeline as hf_pipeline
-            _whisper_pipe = hf_pipeline(
-                "automatic-speech-recognition",
-                model="openai/whisper-large-v3-turbo",
-                device=device,
-            )
-            print("[OmniVoice] Whisper โหลดสำเร็จ")
-        except Exception as e:
-            print(f"[OmniVoice] Whisper ล้มเหลว: {e}")
-
-
-# ─── ENSURE WHISPER (แยกจาก main model) ───────────────────────────────────────
-def _ensure_whisper():
-    global _whisper_pipe
-    if _whisper_pipe is not None:
-        return
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("[OmniVoice] กำลังโหลด Whisper ...")
-    try:
-        from transformers import pipeline as hf_pipeline
-        _whisper_pipe = hf_pipeline(
-            "automatic-speech-recognition",
-            model="openai/whisper-large-v3-turbo",
-            device=device,
-        )
-        print("[OmniVoice] Whisper โหลดสำเร็จ")
-    except Exception as e:
-        raise RuntimeError(f"โหลด Whisper ล้มเหลว: {e}")
-
 
 # ─── UNLOAD ────────────────────────────────────────────────────────────────────
 def unload_model():
-    global _model, _whisper_pipe, _loaded_model_id
+    global _model, _loaded_model_id
     with _model_lock:
         _model           = None
-        _whisper_pipe    = None
         _loaded_model_id = None
         gc.collect()
         if torch.cuda.is_available():
@@ -184,10 +150,9 @@ def unload_model():
 # ─── STATUS ────────────────────────────────────────────────────────────────────
 def get_status():
     return {
-        "model_loaded":   _model is not None,
-        "model_id":       _loaded_model_id,
-        "whisper_loaded": _whisper_pipe is not None,
-        "gpu_info":       get_gpu_info(),
+        "model_loaded": _model is not None,
+        "model_id":     _loaded_model_id,
+        "gpu_info":     get_gpu_info(),
     }
 
 
@@ -201,17 +166,6 @@ def load_audio_tensor(path: str):
         new_len = int(len(audio) * SAMPLE_RATE / sr)
         audio   = sps.resample(audio, new_len)
     return torch.from_numpy(audio).unsqueeze(0)
-
-
-def auto_transcribe(audio_path: str) -> str:
-    if _whisper_pipe is None:
-        return ""
-    # Load audio ourselves (soundfile, no ffmpeg) and pass dict to pipeline
-    audio, sr = sf.read(audio_path, dtype="float32")
-    if audio.ndim > 1:
-        audio = audio.mean(axis=1)
-    result = _whisper_pipe({"raw": audio, "sampling_rate": sr}, return_timestamps=True)
-    return result.get("text", "").strip()
 
 
 def save_audio(audio_np: np.ndarray, prefix="tts") -> str:
@@ -252,7 +206,7 @@ def split_text(text: str, max_chars: int = 200) -> list[str]:
 
 
 # ─── CORE GENERATE ─────────────────────────────────────────────────────────────
-def _call_model(text, ref_audio_file, ref_text, instruct,
+def _call_model(text, ref_audio_file, instruct,
                 steps, guidance, speed, t_shift,
                 seed=0, duration=0.0,
                 pos_temp=5.0, cls_temp=0.0, layer_penalty=5.0):
@@ -261,15 +215,6 @@ def _call_model(text, ref_audio_file, ref_text, instruct,
     ref_audio_path = ref_audio_file if isinstance(ref_audio_file, str) else None
     if ref_audio_path:
         ref_tensor = load_audio_tensor(ref_audio_path)
-        if not ref_text:
-            # auto-load Whisper ถ้ายังไม่ได้โหลด เพื่อให้ได้ ref_text
-            # (ref_text สำคัญมากต่อคุณภาพการโคลนเสียง)
-            if _whisper_pipe is None:
-                try:
-                    _ensure_whisper()
-                except Exception:
-                    pass  # ไม่มี Whisper → ใช้ zero-shot แทน
-            ref_text = auto_transcribe(ref_audio_path)
 
     if seed > 0:
         torch.manual_seed(int(seed))
@@ -283,7 +228,7 @@ def _call_model(text, ref_audio_file, ref_text, instruct,
         t_shift=float(t_shift),
         speed=float(speed),
         ref_audio=(ref_tensor, SAMPLE_RATE) if ref_tensor is not None else None,
-        ref_text=ref_text if ref_text else None,
+        ref_text=None,
         position_temperature=float(pos_temp),
         class_temperature=float(cls_temp),
         layer_penalty_factor=float(layer_penalty),
@@ -311,19 +256,11 @@ def pick_script(script_name: str) -> str:
     return SAMPLE_SCRIPTS.get(script_name, "")
 
 
-def do_transcribe(audio_path):
-    if not audio_path:
-        return ""
-    if _whisper_pipe is None:
-        return "(เปิดใช้ Whisper ในตั้งค่าโมเดลก่อน)"
-    return auto_transcribe(audio_path)
-
-
 # ─── TAB FUNCTIONS ─────────────────────────────────────────────────────────────
-def generate_clone(text, ref_audio, ref_text, instruct,
+def generate_clone(text, ref_audio, instruct,
                    steps, guidance, speed, t_shift,
                    seed, duration, pos_temp, cls_temp, layer_penalty,
-                   model_choice, dtype_choice, attn_choice, whisper_enable,
+                   model_choice, dtype_choice, attn_choice,
                    progress=None):
     """Returns (file_path, status_msg, gpu_info)"""
     if not text.strip():
@@ -335,9 +272,9 @@ def generate_clone(text, ref_audio, ref_text, instruct,
         with _model_lock:
             if progress: progress(0.05, desc="กำลังโหลดโมเดล…")
             print(f"[Clone] Generating ({len(text.strip())} chars)…")
-            _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable)
+            _ensure_model(model_choice, dtype_choice, attn_choice)
             if progress: progress(0.2, desc="กำลังสร้างเสียง…")
-            arr = _call_model(text.strip(), ref_audio, ref_text.strip() if ref_text else None,
+            arr = _call_model(text.strip(), ref_audio,
                               instruct.strip() if instruct else None,
                               steps, guidance, speed, t_shift,
                               seed, duration, pos_temp, cls_temp, layer_penalty)
@@ -351,7 +288,7 @@ def generate_clone(text, ref_audio, ref_text, instruct,
 def generate_design(text, instruct,
                     steps, guidance, speed, t_shift,
                     seed, duration, pos_temp, cls_temp, layer_penalty,
-                    model_choice, dtype_choice, attn_choice, whisper_enable,
+                    model_choice, dtype_choice, attn_choice,
                     progress=None):
     """Returns (file_path, status_msg, gpu_info)"""
     if not text.strip():
@@ -363,9 +300,9 @@ def generate_design(text, instruct,
         with _model_lock:
             if progress: progress(0.05, desc="กำลังโหลดโมเดล…")
             print(f"[Design] Generating ({len(text.strip())} chars)…")
-            _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable)
+            _ensure_model(model_choice, dtype_choice, attn_choice)
             if progress: progress(0.2, desc="กำลังสร้างเสียง…")
-            arr = _call_model(text.strip(), None, None,
+            arr = _call_model(text.strip(), None,
                               instruct.strip(), steps, guidance, speed, t_shift,
                               seed, duration, pos_temp, cls_temp, layer_penalty)
         path = save_audio(arr, "design")
@@ -375,11 +312,11 @@ def generate_design(text, instruct,
         return None, f"เกิดข้อผิดพลาด: {e}", get_gpu_info()
 
 
-def generate_longform(text, ref_audio, ref_text, instruct,
+def generate_longform(text, ref_audio, instruct,
                       steps, guidance, speed, t_shift,
                       seed, duration, pos_temp, cls_temp, layer_penalty,
                       chunk_size, silence_ms, use_consistency,
-                      model_choice, dtype_choice, attn_choice, whisper_enable,
+                      model_choice, dtype_choice, attn_choice,
                       progress=None):
     """Returns (file_path, status_msg, gpu_info)"""
     if not text.strip():
@@ -393,18 +330,17 @@ def generate_longform(text, ref_audio, ref_text, instruct,
     try:
         with _model_lock:
             if progress: progress(0.02, desc="กำลังโหลดโมเดล…")
-            _ensure_model(model_choice, dtype_choice, attn_choice, whisper_enable)
+            _ensure_model(model_choice, dtype_choice, attn_choice)
 
             silence = np.zeros(int(SAMPLE_RATE * silence_ms / 1000), dtype=np.float32)
             all_audio     = []
             cur_ref_audio = ref_audio
-            cur_ref_text  = ref_text.strip() if ref_text else ""
             tmp_ref_path  = None
 
             for i, chunk in enumerate(chunks):
                 if progress: progress((i + 0.5) / total, desc=f"Chunk {i+1}/{total}…")
                 print(f"[Longform] Chunk {i+1}/{total} ({len(chunk)} chars)…")
-                arr = _call_model(chunk, cur_ref_audio, cur_ref_text,
+                arr = _call_model(chunk, cur_ref_audio,
                                   instruct.strip() if instruct else None,
                                   steps, guidance, speed, t_shift,
                                   seed, duration, pos_temp, cls_temp, layer_penalty)
@@ -414,7 +350,6 @@ def generate_longform(text, ref_audio, ref_text, instruct,
                     tmp_ref_path  = os.path.join(OUTPUT_DIR, "_tmp_ref.wav")
                     sf.write(tmp_ref_path, arr, SAMPLE_RATE)
                     cur_ref_audio = tmp_ref_path
-                    cur_ref_text  = chunk
 
                 if i < total - 1:
                     all_audio.append(silence)
@@ -432,76 +367,3 @@ def generate_longform(text, ref_audio, ref_text, instruct,
         return None, f"เกิดข้อผิดพลาด: {e}", get_gpu_info()
 
 
-def transcribe_source(src_path, progress=None):
-    """Transcribe เสียงต้นทาง — Returns (text, status_msg)"""
-    if not src_path:
-        return "", "กรุณาอัปโหลดไฟล์เสียงต้นทาง"
-    try:
-        if progress: progress(0.1, desc="กำลังโหลด Whisper…")
-        _ensure_whisper()
-        if progress: progress(0.5, desc="กำลัง transcribe…")
-        text = auto_transcribe(src_path)
-        return text, f"Transcribe สำเร็จ ({len(text)} ตัวอักษร)"
-    except Exception as e:
-        return "", f"เกิดข้อผิดพลาด: {e}"
-
-
-def generate_voice_convert(src_path, src_text,
-                           ref_audio, ref_text,
-                           steps, guidance, speed, t_shift,
-                           seed, duration, pos_temp, cls_temp, layer_penalty,
-                           model_choice, dtype_choice, attn_choice,
-                           progress=None):
-    """Returns (file_path, transcript_text, status_msg, gpu_info)"""
-    if not src_path:
-        return None, "", "กรุณาอัปโหลดไฟล์เสียงต้นทาง", get_gpu_info()
-    if not ref_audio:
-        return None, src_text, "กรุณาอัปโหลดหรืออัดเสียง reference", get_gpu_info()
-
-    t0 = time.time()
-    try:
-        with _model_lock:
-            if progress: progress(0.05, desc="กำลังโหลดโมเดล…")
-            print("[VoiceConvert] Loading model…")
-            _ensure_model(model_choice, dtype_choice, attn_choice, False)
-            _ensure_whisper()
-
-            text = src_text.strip() if src_text else ""
-            if not text:
-                if progress: progress(0.1, desc="กำลัง transcribe…")
-                print("[VoiceConvert] Transcribing source audio…")
-                text = auto_transcribe(src_path)
-            if not text:
-                return None, "", "Transcribe ไม่ได้ข้อความ", get_gpu_info()
-
-            # Split transcribed text into chunks for progress tracking
-            chunks = split_text(text, max_chars=200)
-            total = len(chunks)
-            print(f"[VoiceConvert] {len(text)} chars → {total} chunk(s)")
-
-            silence = np.zeros(int(SAMPLE_RATE * 100 / 1000), dtype=np.float32)  # 100ms gap
-            all_audio = []
-            ref_t = ref_text.strip() if ref_text else ""
-
-            for i, chunk in enumerate(chunks):
-                frac = 0.2 + 0.8 * (i / total)
-                if progress: progress(frac, desc=f"Chunk {i+1}/{total}…")
-                print(f"[VoiceConvert] Chunk {i+1}/{total} ({len(chunk)} chars)…")
-                arr = _call_model(chunk, ref_audio, ref_t,
-                                  None, steps, guidance, speed, t_shift,
-                                  seed, duration, pos_temp, cls_temp, layer_penalty)
-                all_audio.append(arr)
-                if i < total - 1:
-                    all_audio.append(silence)
-
-        if len(all_audio) == 1:
-            combined = all_audio[0]
-        else:
-            combined = np.concatenate(all_audio)
-        path = save_audio(combined, "vconv")
-        dur = len(combined) / SAMPLE_RATE
-        elapsed = time.time() - t0
-        print(f"[VoiceConvert] Done: {total} chunks, {dur:.1f}s audio, {elapsed:.1f}s elapsed")
-        return path, text, f"สำเร็จ | {total} chunk(s) | {dur:.1f}s | ({elapsed:.1f}s)", get_gpu_info()
-    except Exception as e:
-        return None, src_text or "", f"เกิดข้อผิดพลาด: {e}", get_gpu_info()

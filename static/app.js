@@ -40,7 +40,7 @@ function getSliderVal(prefix, id) {
 }
 
 // ── Init sliders ────────────────────────────────────────────────────────────
-['clone', 'design', 'lf', 'vc2'].forEach(p => {
+['clone', 'design', 'lf'].forEach(p => {
   buildSliders(document.getElementById(`${p}-adv-sliders`),    ADV_SLIDERS,    p);
   buildSliders(document.getElementById(`${p}-expert-sliders`), EXPERT_SLIDERS, p);
 });
@@ -130,8 +130,6 @@ function onTxtFile(file) {
 setupDropZone('clone-drop',    'clone-ref-file', 'clone-ref-name');
 setupDropZone('lf-drop',       'lf-ref-file',    'lf-ref-name');
 setupDropZone('lf-txt-drop',   'lf-txt-file',    'lf-txt-name',   onTxtFile);
-setupDropZone('vc2-drop',      'vc2-src-file',   'vc2-src-name');
-setupDropZone('vc2-ref-drop',  'vc2-ref-file',   'vc2-ref-name');
 
 // ── Sample scripts ──────────────────────────────────────────────────────────
 let SCRIPTS = {};
@@ -141,7 +139,7 @@ async function loadScripts() {
     const res = await fetch('/api/sample_scripts');
     SCRIPTS = await res.json();
     const keys = Object.keys(SCRIPTS);
-    ['clone', 'lf', 'vc2'].forEach(p => {
+    ['clone', 'lf'].forEach(p => {
       const dd = document.getElementById(`${p}-script-dd`);
       if (!dd) return;
       dd.innerHTML = '';
@@ -293,7 +291,7 @@ function setupMic(prefix) {
   });
 }
 
-['clone', 'lf', 'vc2'].forEach(setupMic);
+['clone', 'lf'].forEach(setupMic);
 
 // ── GPU status ──────────────────────────────────────────────────────────────
 async function refreshStatus() {
@@ -350,9 +348,7 @@ function showOutput(prefix, fileUrl, status) {
 function setGenBtnState(prefix, busy) {
   const btn = document.getElementById(`${prefix}-gen-btn`);
   btn.disabled  = busy;
-  btn.textContent = busy
-    ? '⏳ กำลังสร้าง…'
-    : (prefix === 'vc2' ? '▶ พูดใหม่' : '▶ สร้างเสียง');
+  btn.textContent = busy ? '⏳ กำลังสร้าง…' : '▶ สร้างเสียง';
 }
 
 // Build FormData from element id map
@@ -371,10 +367,9 @@ function buildForm(fields) {
 
 function getModelSettings() {
   return {
-    model_choice:   document.getElementById('model-choice').value,
-    dtype_choice:   document.getElementById('dtype-choice').value,
-    attn_choice:    document.getElementById('attn-choice').value,
-    whisper_enable: 'false',
+    model_choice: document.getElementById('model-choice').value,
+    dtype_choice: document.getElementById('dtype-choice').value,
+    attn_choice:  document.getElementById('attn-choice').value,
   };
 }
 
@@ -448,18 +443,6 @@ function getRefAudio(prefix) {
   return input && input.files[0] ? input.files[0] : null;
 }
 
-document.getElementById('clone-asr-btn').addEventListener('click', async () => {
-  const ref = getRefAudio('clone');
-  if (!ref) { alert('กรุณาอัปโหลดหรืออัดเสียง reference ก่อน'); return; }
-  const fd = new FormData();
-  fd.append('audio', ref);
-  try {
-    const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
-    const d = await res.json();
-    document.getElementById('clone-ref-txt').value = d.text || '';
-  } catch (e) { alert('Transcribe ล้มเหลว: ' + e.message); }
-});
-
 document.getElementById('clone-gen-btn').addEventListener('click', async () => {
   const text = document.getElementById('clone-text').value;
   const ref  = getRefAudio('clone');
@@ -470,7 +453,6 @@ document.getElementById('clone-gen-btn').addEventListener('click', async () => {
     ...getModelSettings(),
     ...getAdvSliders('clone'),
     text,
-    ref_text:  document.getElementById('clone-ref-txt').value,
     instruct:  document.getElementById('clone-instruct').value,
     ref_audio: ref,
   });
@@ -481,24 +463,34 @@ document.getElementById('clone-gen-btn').addEventListener('click', async () => {
   });
 });
 
-// ── Voice Design presets ─────────────────────────────────────────────────────
-document.querySelectorAll('#design-presets .preset-pill').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const inst = document.getElementById('design-inst');
-    inst.value = btn.dataset.val;
-    // toggle active
-    document.querySelectorAll('#design-presets .preset-pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  });
-});
+// ── Voice Design keyword chip builder ────────────────────────────────────────
+(function () {
+  const instEl = document.getElementById('design-inst');
 
-// Clear active preset when user edits manually
-document.getElementById('design-inst').addEventListener('input', () => {
-  const val = document.getElementById('design-inst').value.trim();
-  document.querySelectorAll('#design-presets .preset-pill').forEach(b => {
-    b.classList.toggle('active', b.dataset.val === val);
+  // Compose textarea value from all active chips (in DOM order)
+  function composeFromChips() {
+    const active = document.querySelectorAll('#design-keywords .kw-chip.active');
+    instEl.value = Array.from(active).map(c => c.dataset.val).join(', ');
+  }
+
+  document.querySelectorAll('#design-keywords .kw-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cat = chip.dataset.cat;
+      const wasActive = chip.classList.contains('active');
+      // Deselect all chips in same category
+      document.querySelectorAll(`#design-keywords .kw-chip[data-cat="${cat}"]`)
+        .forEach(c => c.classList.remove('active'));
+      // Toggle: if was already active, clicking again deselects (clear); else select
+      if (!wasActive) chip.classList.add('active');
+      composeFromChips();
+    });
   });
-});
+
+  // When user types manually, clear all chip selections
+  instEl.addEventListener('input', () => {
+    document.querySelectorAll('#design-keywords .kw-chip').forEach(c => c.classList.remove('active'));
+  });
+})();
 
 // ── Voice Design ─────────────────────────────────────────────────────────────
 document.getElementById('design-gen-btn').addEventListener('click', async () => {
@@ -531,7 +523,6 @@ document.getElementById('lf-gen-btn').addEventListener('click', async () => {
     ...getModelSettings(),
     ...getAdvSliders('lf'),
     text,
-    ref_text:        document.getElementById('lf-ref-txt').value,
     instruct:        document.getElementById('lf-inst').value,
     chunk_size:      document.getElementById('lf-chunk').value,
     silence_ms:      document.getElementById('lf-sil').value,
@@ -543,23 +534,6 @@ document.getElementById('lf-gen-btn').addEventListener('click', async () => {
     if (r && r.file) showOutput('lf', r.file, r.status);
     else if (r && r.status) alert(r.status);
   });
-});
-
-// ── Voice Convert ────────────────────────────────────────────────────────────
-document.getElementById('vc2-transcribe-btn').addEventListener('click', async () => {
-  const src = document.getElementById('vc2-src-file').files[0];
-  if (!src) { alert('กรุณาอัปโหลดไฟล์เสียงต้นทางก่อน'); return; }
-  document.getElementById('vc2-transcribe-status').textContent = 'กำลัง transcribe…';
-  const fd = new FormData();
-  fd.append('audio', src);
-  try {
-    const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
-    const d = await res.json();
-    document.getElementById('vc2-src-text').value = d.text || '';
-    document.getElementById('vc2-transcribe-status').textContent = d.status || '';
-  } catch (e) {
-    document.getElementById('vc2-transcribe-status').textContent = 'เกิดข้อผิดพลาด: ' + e.message;
-  }
 });
 
 // ── Dark mode toggle ────────────────────────────────────────────────────────
@@ -577,28 +551,3 @@ document.getElementById('vc2-transcribe-btn').addEventListener('click', async ()
   );
 })();
 
-document.getElementById('vc2-gen-btn').addEventListener('click', async () => {
-  const srcFile = document.getElementById('vc2-src-file').files[0];
-  const ref     = getRefAudio('vc2');
-  if (!srcFile) { alert('กรุณาอัปโหลดไฟล์เสียงต้นทาง'); return; }
-  if (!ref)     { alert('กรุณาอัปโหลดหรืออัดเสียง reference'); return; }
-
-  const fd = buildForm({
-    ...getModelSettings(),
-    ...getAdvSliders('vc2'),
-    src_text: document.getElementById('vc2-src-text').value,
-    ref_text: document.getElementById('vc2-ref-txt').value,
-    src_audio: srcFile,
-    ref_audio: ref,
-  });
-
-  await streamGenerate('/api/generate/convert', fd, 'vc2', r => {
-    if (!r) return;
-    if (r.file) showOutput('vc2', r.file, r.status);
-    else if (r.status) alert(r.status);
-    if (r.transcript) {
-      document.getElementById('vc2-text-out').style.display = '';
-      document.getElementById('vc2-text-out-box').textContent = r.transcript;
-    }
-  });
-});

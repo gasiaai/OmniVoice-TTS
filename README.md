@@ -9,9 +9,8 @@ Zero-shot multilingual text-to-speech (600+ languages) — standalone desktop ap
 ## Features
 
 - **Voice Clone** — clone any voice from a 3-15 second reference audio
-- **Voice Design** — create a voice from text description (e.g. `"female, calm, british accent"`)
+- **Voice Design** — create a voice from text description (e.g. `"female, young adult, british accent"`)
 - **Longform** — auto-split long text into chunks, merge into one audio file
-- **Voice Convert** — re-synthesize audio with a different voice
 - Built-in mic recording (with AGC disabled for clean capture)
 - Auto-loads model on first use, stays in VRAM until you unload
 - Dark / Light mode toggle
