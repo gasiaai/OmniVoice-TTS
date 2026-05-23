@@ -12,3 +12,6 @@ _tmp_ref.*
 py_embed.zip
 get-pip.py
 _pip_tmp.whl
+
+# Local-only folders
+แบคอัพ/
